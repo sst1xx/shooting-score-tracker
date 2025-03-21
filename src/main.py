@@ -24,15 +24,29 @@ logger = logging.getLogger(__name__)
 
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """
-    Check if message is from the main group chat and silently ignore it.
-    Returns True if the message is from the group chat (meaning it should be ignored).
+    Check if message is from a group chat:
+    - If bot is mentioned, respond with a message to use private chat
+    - Otherwise silently ignore
+    Returns True if the message is from a group chat (meaning it should be ignored).
     """
     try:
         if update.effective_chat and update.effective_chat.type in ['group', 'supergroup']:
-            logger.debug("Message received in group chat - ignoring")
-            return True  # Signal that this is a group message and should be ignored
+            # Check if bot is mentioned in the message
+            if update.message and update.message.text:
+                bot_username = context.bot.username
+                if f"@{bot_username}" in update.message.text:
+                    logger.info(f"Bot mentioned in group chat by {update.message.from_user.username}")
+                    # Reply only when mentioned
+                    await update.message.reply_text(
+                        f'@{update.message.from_user.username}, для внесения статистики и просмотра результатов, '
+                        'пожалуйста, общайтесь со мной напрямую, чтобы не засорять общий чат.'
+                    )
+            
+            # Always return True for group messages to prevent further processing
+            return True
     except Exception as e:
         logger.error(f"Error in handle_group_message: {e}")
+    
     return False  # Not a group message, proceed with normal handling
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -48,9 +62,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
         
     await update.message.reply_text(
-        'Добро пожаловать в бот для результатов стрельбы!\n'
-        'Отправьте свои результаты в формате: <лучшая серия> <количество центральных десяток>'
+        'Добро пожаловать в бот для результатов стрельбы!'
     )
+    await help_command(update, context)
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show a user’s currently saved result."""
@@ -103,6 +117,12 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     # Validate input ranges
+    if best_series < central_tens * 10:
+        await update.message.reply_text(
+            'Лучшая серия не может быть меньше, чем количество центральных десяток × 10.'
+        )
+        return
+
     if not (0 <= best_series <= 100):
         await update.message.reply_text(
             'Лучшая серия должна быть числом от 0 до 100.'
@@ -126,7 +146,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             if best_series < prev_best_series or \
                (best_series == prev_best_series and central_tens < prev_central_tens):
                 await update.message.reply_text(
-                    'Ваши новые результаты хуже предыдущих. Сохраняем старые результаты.'
+                    'Ваши новые результаты не так хороши как предыдущие. Сохраняем старые результаты.'
                 )
                 return
 
@@ -166,6 +186,23 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     
     await update.message.reply_text(leaderboard_text)
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a help message when the user issues /help."""
+    if await handle_group_message(update, context):
+        return
+        
+    help_text = (
+        "📋 Список команд бота:\n\n"
+        "/status - Проверить ваш текущий результат\n"
+        "/leaderboard - Посмотреть таблицу лидеров\n"
+        "/help - Показать это сообщение\n\n"
+        "Чтобы внести результаты стрельбы, просто отправьте два числа:\n"
+        "лучшая_серия количество_центральных_десяток\n"
+        "Например: 99 7"
+    )
+    
+    await update.message.reply_text(help_text)
+
 async def main() -> None:
     """Set up the database, configure the bot, add handlers, and run polling."""
     # Initialize or create your database
@@ -178,6 +215,7 @@ async def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("leaderboard", leaderboard))
+    application.add_handler(CommandHandler("help", help_command))
 
     # Register a message handler (for the best_series / central_tens input)
     application.add_handler(
