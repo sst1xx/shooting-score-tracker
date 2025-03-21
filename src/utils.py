@@ -12,38 +12,38 @@ _current_group_id = None
 
 async def is_user_in_chat(bot: Bot, user_id: int, chat_id: int) -> bool:
     """
-    Проверяет, находится ли пользователь в указанном чате (группе или супергруппе).
+    Checks if a user is in the specified chat (group or supergroup).
     
-    :param bot: Объект бота
-    :param user_id: ID пользователя для проверки
-    :param chat_id: ID чата
-    :return: True, если пользователь в чате, иначе False
+    :param bot: Bot object
+    :param user_id: User ID to check
+    :param chat_id: Chat ID
+    :return: True if the user is in the chat, otherwise False
     """
     try:
-        # 1. Проверить, что чат является группой или супергруппой
+        # 1. Check if the chat is a group or supergroup
         chat = await bot.get_chat(chat_id)
         if chat.type not in ["group", "supergroup"]:
-            logger.warning(f"Чат {chat_id} не является группой: {chat.type}")
+            logger.warning(f"Chat {chat_id} is not a group: {chat.type}")
             return False
 
-        # 2. Проверить наличие пользователя в чате
+        # 2. Check if the user is in the chat
         member = await bot.get_chat_member(chat_id, user_id)
         is_member = member.status in ["member", "administrator", "creator"]
         
-        logger.info(f"Пользователь {user_id} {'является' if is_member else 'НЕ является'} членом группы {chat_id}")
+        logger.info(f"User {user_id} {'is' if is_member else 'is NOT'} a member of group {chat_id}")
         return is_member
 
     except TelegramError as e:
-        logger.error(f"Ошибка Telegram при проверке членства в чате: {e}")
+        logger.error(f"Telegram error when checking chat membership: {e}")
         return False
 
 async def is_user_in_group(user_id: int, bot: Bot) -> Tuple[bool, str]:
     """
-    Проверяет, является ли пользователь участником группы, указанной в GROUP_ID.
+    Checks if a user is a member of the group specified in GROUP_ID.
     
     Args:
-        user_id: ID пользователя для проверки
-        bot: Объект бота
+        user_id: User ID to check
+        bot: Bot object
         
     Returns:
         Tuple (is_member, error_message)
@@ -54,13 +54,13 @@ async def is_user_in_group(user_id: int, bot: Bot) -> Tuple[bool, str]:
     if _current_group_id is None:
         from config import GROUP_ID
         _current_group_id = GROUP_ID
-        logger.info(f"Инициализирован ID группы: {_current_group_id}")
+        logger.info(f"Initialized group ID: {_current_group_id}")
     
     try:
         # Convert _current_group_id to int if it's a string
         group_id = int(_current_group_id)
         
-        logger.info(f"Проверка членства пользователя {user_id} в группе {group_id}")
+        logger.info(f"Checking membership of user {user_id} in group {group_id}")
         
         # Check membership
         is_member = await is_user_in_chat(bot=bot, user_id=user_id, chat_id=group_id)
@@ -73,17 +73,17 @@ async def is_user_in_group(user_id: int, bot: Bot) -> Tuple[bool, str]:
     except TelegramError as e:
         return await _handle_telegram_error(e, bot, user_id)
     except Exception as e:
-        logger.error(f"Ошибка при проверке членства в группе: {e}")
+        logger.error(f"Error when checking group membership: {e}")
         return False, "Произошла ошибка при проверке членства в группе."
 
 async def _handle_telegram_error(e: TelegramError, bot: Bot, user_id: int) -> Tuple[bool, str]:
     """
-    Обрабатывает ошибки Telegram API при проверке членства в группе.
+    Handles Telegram API errors when checking group membership.
     
     Args:
-        e: Объект ошибки TelegramError
-        bot: Объект бота
-        user_id: ID пользователя
+        e: TelegramError object
+        bot: Bot object
+        user_id: User ID
         
     Returns:
         Tuple (is_member, error_message)
@@ -106,7 +106,7 @@ async def _handle_telegram_error(e: TelegramError, bot: Bot, user_id: int) -> Tu
         return False, "Не удалось определить новый ID группы после миграции."
     
     # Handle specific errors
-    logger.error(f"Telegram error при проверке членства: {error_msg}")
+    logger.error(f"Telegram error when checking membership: {error_msg}")
     
     if isinstance(e, BadRequest):
         error_lower = error_msg.lower()
