@@ -1,4 +1,4 @@
-# Telegram Shooting Bot
+# Shooting Score Tracker
 
 This project is a Telegram bot designed for participants of a shooting group to submit their shooting results via private messages. The bot ensures that only members of a specified group can send their results and maintains a leaderboard that is updated bi-weekly.
 
@@ -13,7 +13,7 @@ This project is a Telegram bot designed for participants of a shooting group to 
 ## Project Structure
 
 ```
-telegram-shooting-bot
+shooting-score-tracker
 ├── src
 │   ├── main.py          # Entry point of the bot application
 │   ├── database.py      # Database operations for user results
@@ -33,7 +33,7 @@ telegram-shooting-bot
 1. Clone the repository:
    ```
    git clone <repository-url>
-   cd telegram-shooting-bot
+   cd shooting-score-tracker
    ```
 
 2. Create a virtual environment and activate it:
