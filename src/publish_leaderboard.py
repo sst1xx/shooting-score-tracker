@@ -31,9 +31,9 @@ async def publish_leaderboard():
             message = "Пока нет результатов для отображения."
         else:
             # Filter results into three groups
-            pro_results = [r for r in results if r[2] > 93]
-            semi_pro_results = [r for r in results if 80 <= r[2] <= 93]
-            amateur_results = [r for r in results if r[2] < 80]
+            pro_results = [r for r in results if r[2] >= 93]
+            semi_pro_results = [r for r in results if 80 <= r[2] <= 92]
+            amateur_results = [r for r in results if r[2] <= 79]
             
             # Sort each group by best_series and central_tens
             pro_sorted = sorted(pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]

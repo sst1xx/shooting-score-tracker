@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('https://api.telegram.org/bot${BOT_TOKEN}/getMe')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

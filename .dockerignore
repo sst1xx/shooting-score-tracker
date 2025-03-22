@@ -1,0 +1,35 @@
+# Environment variables and secrets
+.env
+*.env
+.env.*
+
+# Git files
+.git/
+.gitignore
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database files (will be mounted as volume)
+data/*.sqlite
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log

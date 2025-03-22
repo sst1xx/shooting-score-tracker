@@ -85,7 +85,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handle a text message from the user containing best_series and central_tens.
-    Example input: "99 7"
+    Example input: "92 3"
     """
     if await handle_group_message(update, context):
         return
@@ -103,7 +103,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     text_parts = update.message.text.strip().split()
     if len(text_parts) < 2:
         await update.message.reply_text(
-            'Пожалуйста, укажите и лучшую серию, и количество центральных десяток, например, "99 7"'
+            'Пожалуйста, укажите и лучшую серию, и количество центральных десяток, например, "92 3"'
         )
         return
 
@@ -152,7 +152,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             prev_central_tens = previous_result[3]
             
             # Determine the previous group
-            if prev_best_series > 93:
+            if prev_best_series >= 93:
                 previous_group = "Профи"
             elif prev_best_series >= 80:
                 previous_group = "Полупрофи"
@@ -163,7 +163,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             if best_series < prev_best_series or \
                (best_series == prev_best_series and central_tens < prev_central_tens):
                 await update.message.reply_text(
-                    'Ваши новые результаты не так хороши как предыдущие. Сохраняем старые результаты.'
+                    'Ваши новые результаты не так хороши как предыдущие. Сохраняем старые результаты. Не сдавайтесь, продолжайте тренироваться!'
                 )
                 return
 
@@ -177,7 +177,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         
         # Determine the new group
         new_group = None
-        if best_series > 93:
+        if best_series >= 93:
             new_group = "Профи"
         elif best_series >= 80:
             new_group = "Полупрофи"
@@ -222,7 +222,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user_group = "Любители"  # Default group if user has no results
     if user_result:
         best_series = user_result[2]
-        if best_series > 93:
+        if best_series >= 93:
             user_group = "Профи"
         elif best_series >= 80:
             user_group = "Полупрофи"
@@ -231,13 +231,13 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     
     # Filter results based on user's group
     if user_group == "Профи":
-        filtered_results = [r for r in results if r[2] > 93]
+        filtered_results = [r for r in results if r[2] >= 93]
         group_title = "🏆 Группа Профи 🏆"
     elif user_group == "Полупрофи":
-        filtered_results = [r for r in results if 80 <= r[2] <= 93]
+        filtered_results = [r for r in results if 80 <= r[2] <= 92]
         group_title = "🏆 Группа Полупрофи 🏆"
     else:  # Любители
-        filtered_results = [r for r in results if r[2] < 80]
+        filtered_results = [r for r in results if r[2] <= 79]
         group_title = "🏆 Группа Любители 🏆"
     
     # Sort results by best_series (descending) and then by central_tens (descending)
@@ -331,10 +331,34 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/help - Показать это сообщение\n\n"
         "Чтобы внести результаты стрельбы, просто отправьте два числа:\n"
         "Лучшая_серия    Количество_центральных_десяток\n"
-        "Например: 99 7"
+        "Например: 92 3"
     )
     
     await update.message.reply_text(help_text)
+
+async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Welcome new members to the group with instructions."""
+    if not update.message or not update.message.new_chat_members:
+        return
+        
+    for new_member in update.message.new_chat_members:
+        # Skip if the new member is the bot itself
+        if new_member.id == context.bot.id:
+            continue
+            
+        # Welcome message with instructions
+        welcome_text = (
+            f"Добро пожаловать, {new_member.first_name}! 👋\n\n"
+            f"Я бот для ведения результатов стрельбы. Для внесения своих результатов "
+            f"и просмотра таблицы лидеров, пожалуйста, напишите мне в личные сообщения "
+            f"@{context.bot.username}.\n\n"
+            f"Чтобы внести результаты, отправьте два числа в формате:\n"
+            f"Серия Десятки\n"
+            f"Например: 92 3"
+        )
+        
+        await update.message.reply_text(welcome_text)
+        logger.info(f"Welcomed new member {new_member.first_name} to the group")
 
 async def main() -> None:
     """Set up the database, configure the bot, add handlers, and run polling."""
@@ -350,6 +374,9 @@ async def main() -> None:
     application.add_handler(CommandHandler("leaderboard", leaderboard))
     application.add_handler(CommandHandler("leaderboard_all", leaderboard_all))
     application.add_handler(CommandHandler("help", help_command))
+
+    # Add handler for new chat members
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
 
     # Register a message handler (for the best_series / central_tens input)
     application.add_handler(
