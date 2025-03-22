@@ -4,7 +4,7 @@ This project is a Telegram bot designed for participants of a shooting group to 
 
 ## Features
 
-- Users can submit their best shooting series and the number of central tens.
+- Users can submit their best shooting series and the number of tens.
 - Users can attach a photo with their results.
 - The bot compares new submissions with previous results and notifies users if their new results are worse.
 - A leaderboard is generated and published every two weeks on Monday mornings.
@@ -56,7 +56,7 @@ shooting-score-tracker
 
 ## Usage
 
-- To submit results, send a message to the bot with your best series and the number of central tens.
+- To submit results, send a message to the bot with your best series and the number of tens.
 - Use the `/status` command to check your current results.
 - The leaderboard will be published in the specified group every two weeks.
 

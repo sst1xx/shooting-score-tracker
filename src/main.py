@@ -74,9 +74,9 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
     result = get_user_result(user_id)
     if result:
-        # result is a tuple of (user_id, username, best_series, central_tens, photo_id)
+        # result is a tuple of (user_id, username, best_series, total_tens, photo_id)
         await update.message.reply_text(
-            f"Ваш текущий результат:\nЛучшая серия: {result[2]}, Количество центральных десяток: {result[3]}"
+            f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество десяток: {result[3]}"
         )
     else:
         await update.message.reply_text("Вы еще не отправили никаких результатов.")
@@ -84,7 +84,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # Update the handle_result function to use the membership check
 async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Handle a text message from the user containing best_series and central_tens.
+    Handle a text message from the user containing best_series and total_tens.
     Example input: "92 3"
     """
     if await handle_group_message(update, context):
@@ -103,31 +103,32 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     text_parts = update.message.text.strip().split()
     if len(text_parts) < 2:
         await update.message.reply_text(
-            'Пожалуйста, укажите и лучшую серию, и количество центральных десяток, например, "92 3"'
+            'Пожалуйста, укажите и лучшую серию, и количество десяток, например, "92 3"'
         )
         return
 
     try:
         best_series = int(text_parts[0])
-        central_tens = int(text_parts[1])
+        total_tens = int(text_parts[1])
     except ValueError:
         await update.message.reply_text(
-            'Лучшая серия и количество центральных десяток должны быть числами.'
+            'Лучшая серия и количество десяток должны быть числами.'
         )
         return
 
     # Validate input ranges
-    if best_series < central_tens * 10:
-        await update.message.reply_text(
-            'Лучшая серия не может быть меньше, чем количество центральных десяток × 10.'
-        )
-        return
+    if best_series < 93:
+        if best_series < total_tens * 10:
+            await update.message.reply_text(
+                'Лучшая серия не может быть меньше, чем количество десяток × 10.'
+            )
+            return
 
-    if best_series > central_tens * 10 + (10 - central_tens) * 9:
-        await update.message.reply_text(
-            'Лучшая серия не может быть выше, чем количество центральных десяток × 10 и остальные выстрелы максимум по 9.'
-        )
-        return
+        if best_series > total_tens * 10 + (10 - total_tens) * 9:
+            await update.message.reply_text(
+                'Лучшая серия не может быть выше, чем количество десяток × 10 и остальные выстрелы максимум по 9.'
+            )
+            return
 
     if not (0 <= best_series <= 100):
         await update.message.reply_text(
@@ -135,21 +136,21 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         return
         
-    if not (0 <= central_tens <= 10):
+    if not (0 <= total_tens <= 10):
         await update.message.reply_text(
-            'Количество центральных десяток должно быть числом от 0 до 10.'
+            'количество десяток должно быть числом от 0 до 10.'
         )
         return
 
     # Validate and compare with previous results
-    if validate_input(best_series, central_tens):
+    if validate_input(best_series, total_tens):
         previous_result = get_user_result(user_id)
         previous_group = None
         
         # Determine previous group if there was a previous result
         if previous_result:
             prev_best_series = previous_result[2]
-            prev_central_tens = previous_result[3]
+            prev_total_tens = previous_result[3]
             
             # Determine the previous group
             if prev_best_series >= 93:
@@ -161,7 +162,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
             # If new results are worse, ignore them
             if best_series < prev_best_series or \
-               (best_series == prev_best_series and central_tens < prev_central_tens):
+               (best_series == prev_best_series and total_tens < prev_total_tens):
                 await update.message.reply_text(
                     'Ваши новые результаты не так хороши как предыдущие. Сохраняем старые результаты. Не сдавайтесь, продолжайте тренироваться!'
                 )
@@ -172,7 +173,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             user_id,
             update.message.from_user.first_name,
             best_series,
-            central_tens
+            total_tens
         )
         
         # Determine the new group
@@ -193,7 +194,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 await update.message.reply_text(
                     f'🎉 Поздравляем! 🎉\n'
                     f'Вы улучшили свой результат и перешли в группу "{new_group}"!\n'
-                    f'Ваш новый результат: {best_series} очков, {central_tens}*.'
+                    f'Ваш новый результат: {best_series} очков, {total_tens}.'
                 )
                 return
         
@@ -240,7 +241,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         filtered_results = [r for r in results if r[2] <= 79]
         group_title = "🏆 Группа Любители 🏆"
     
-    # Sort results by best_series (descending) and then by central_tens (descending)
+    # Sort results by best_series (descending) and then by total_tens (descending)
     sorted_results = sorted(filtered_results, key=lambda x: (x[2], x[3]), reverse=True)
     
     # Format the leaderboard message
@@ -252,8 +253,11 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         for i, result in enumerate(sorted_results[:10], 1):  # Show top 10 results
             username = result[1]
             best_series = result[2]
-            central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
+            total_tens = result[3]
+            if user_group == "Профи":
+                leaderboard_text += f"{i}. {username}: {best_series} очков, {total_tens}*\n"
+            else:
+                leaderboard_text += f"{i}. {username}: {best_series} очков, {total_tens}\n"
     
     await update.message.reply_text(leaderboard_text)
 
@@ -273,7 +277,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     semi_pro_results = [r for r in results if 80 <= r[2] <= 93]
     amateur_results = [r for r in results if r[2] < 80]
     
-    # Sort each group by best_series and central_tens
+    # Sort each group by best_series and total_tens
     pro_sorted = sorted(pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
     semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
     amateur_sorted = sorted(amateur_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
@@ -289,8 +293,8 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         for i, result in enumerate(pro_sorted, 1):
             username = result[1]
             best_series = result[2]
-            central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
+            total_tens = result[3]
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {total_tens}*\n"
         leaderboard_text += "\n"
     
     # Semi-pro group
@@ -301,8 +305,8 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         for i, result in enumerate(semi_pro_sorted, 1):
             username = result[1]
             best_series = result[2]
-            central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
+            total_tens = result[3]
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {total_tens}\n"
         leaderboard_text += "\n"
     
     # Amateur group
@@ -313,8 +317,8 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         for i, result in enumerate(amateur_sorted, 1):
             username = result[1]
             best_series = result[2]
-            central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
+            total_tens = result[3]
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {total_tens}\n"
     
     await update.message.reply_text(leaderboard_text)
 
@@ -378,7 +382,7 @@ async def main() -> None:
     # Add handler for new chat members
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
 
-    # Register a message handler (for the best_series / central_tens input)
+    # Register a message handler (for the best_series / total_tens input)
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_result)
     )

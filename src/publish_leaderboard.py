@@ -35,7 +35,7 @@ async def publish_leaderboard():
             semi_pro_results = [r for r in results if 80 <= r[2] <= 92]
             amateur_results = [r for r in results if r[2] <= 79]
             
-            # Sort each group by best_series and central_tens
+            # Sort each group by best_series and total_tens
             pro_sorted = sorted(pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
             semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
             amateur_sorted = sorted(amateur_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
@@ -49,8 +49,8 @@ async def publish_leaderboard():
                 message += "В этой группе пока нет результатов.\n\n"
             else:
                 for i, result in enumerate(pro_sorted, 1):
-                    _, username, best_series, central_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
+                    _, username, best_series, total_tens, *_ = result
+                    message += f"{i}. {username}: {best_series} очков, {total_tens}*\n"
                 message += "\n"
             
             # Semi-pro group
@@ -59,8 +59,8 @@ async def publish_leaderboard():
                 message += "В этой группе пока нет результатов.\n\n"
             else:
                 for i, result in enumerate(semi_pro_sorted, 1):
-                    _, username, best_series, central_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
+                    _, username, best_series, total_tens, *_ = result
+                    message += f"{i}. {username}: {best_series} очков, {total_tens}\n"
                 message += "\n"
             
             # Amateur group
@@ -69,8 +69,8 @@ async def publish_leaderboard():
                 message += "В этой группе пока нет результатов.\n\n"
             else:
                 for i, result in enumerate(amateur_sorted, 1):
-                    _, username, best_series, central_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
+                    _, username, best_series, total_tens, *_ = result
+                    message += f"{i}. {username}: {best_series} очков, {total_tens}\n"
 
         # Send message to group
         bot = Bot(token=BOT_TOKEN)
