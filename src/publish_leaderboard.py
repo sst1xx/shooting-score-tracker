@@ -50,7 +50,7 @@ async def publish_leaderboard():
             else:
                 for i, result in enumerate(pro_sorted, 1):
                     _, username, best_series, central_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+                    message += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
                 message += "\n"
             
             # Semi-pro group
@@ -60,7 +60,7 @@ async def publish_leaderboard():
             else:
                 for i, result in enumerate(semi_pro_sorted, 1):
                     _, username, best_series, central_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+                    message += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
                 message += "\n"
             
             # Amateur group
@@ -70,7 +70,7 @@ async def publish_leaderboard():
             else:
                 for i, result in enumerate(amateur_sorted, 1):
                     _, username, best_series, central_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+                    message += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
 
         # Send message to group
         bot = Bot(token=BOT_TOKEN)

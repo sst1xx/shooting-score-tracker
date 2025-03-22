@@ -193,7 +193,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 await update.message.reply_text(
                     f'🎉 Поздравляем! 🎉\n'
                     f'Вы улучшили свой результат и перешли в группу "{new_group}"!\n'
-                    f'Ваш новый результат: {best_series} очков, {central_tens} центральных десяток.'
+                    f'Ваш новый результат: {best_series} очков, {central_tens}*.'
                 )
                 return
         
@@ -253,7 +253,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             username = result[1]
             best_series = result[2]
             central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
     
     await update.message.reply_text(leaderboard_text)
 
@@ -290,7 +290,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             username = result[1]
             best_series = result[2]
             central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
         leaderboard_text += "\n"
     
     # Semi-pro group
@@ -302,7 +302,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             username = result[1]
             best_series = result[2]
             central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
         leaderboard_text += "\n"
     
     # Amateur group
@@ -314,7 +314,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             username = result[1]
             best_series = result[2]
             central_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens}*\n"
     
     await update.message.reply_text(leaderboard_text)
 
