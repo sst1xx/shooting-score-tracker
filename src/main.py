@@ -67,7 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await help_command(update, context)
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show a user’s currently saved result."""
+    """Show a user's currently saved result."""
     if await handle_group_message(update, context):
         return
         
@@ -75,9 +75,12 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     result = get_user_result(user_id)
     if result:
         # result is a tuple of (user_id, username, best_series, total_tens, photo_id)
-        await update.message.reply_text(
-            f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество десяток: {result[3]}"
-        )
+        if result[2] >= 93:
+            message = f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество центральных десяток: {result[3]}*"
+        else:
+            message = f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество десяток: {result[3]}"
+        
+        await update.message.reply_text(message)
     else:
         await update.message.reply_text("Вы еще не отправили никаких результатов.")
 
