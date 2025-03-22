@@ -39,7 +39,7 @@ async def is_user_in_chat(bot: Bot, user_id: int, chat_id: int) -> bool:
 
 async def is_user_in_group(user_id: int, bot: Bot) -> Tuple[bool, str]:
     """
-    Checks if a user is a member of the group specified in GROUP_ID.
+    Checks if a user is a member of the group specified in CHAT_ID.
     
     Args:
         user_id: User ID to check
@@ -52,9 +52,9 @@ async def is_user_in_group(user_id: int, bot: Bot) -> Tuple[bool, str]:
     
     # Initialize _current_group_id from config if not set yet
     if _current_group_id is None:
-        from config import GROUP_ID
-        _current_group_id = GROUP_ID
-        logger.info(f"Initialized group ID: {_current_group_id}")
+        from config import CHAT_ID
+        _current_group_id = CHAT_ID
+        logger.info(f"Initialized group IDa: {_current_group_id}")
     
     try:
         # Convert _current_group_id to int if it's a string

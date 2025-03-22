@@ -123,6 +123,12 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         return
 
+    if best_series > central_tens * 10 + (10 - central_tens) * 9:
+        await update.message.reply_text(
+            'Лучшая серия не может быть выше, чем количество центральных десяток × 10 и остальные выстрелы максимум по 9.'
+        )
+        return
+
     if not (0 <= best_series <= 100):
         await update.message.reply_text(
             'Лучшая серия должна быть числом от 0 до 100.'
@@ -138,9 +144,20 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Validate and compare with previous results
     if validate_input(best_series, central_tens):
         previous_result = get_user_result(user_id)
+        previous_group = None
+        
+        # Determine previous group if there was a previous result
         if previous_result:
             prev_best_series = previous_result[2]
             prev_central_tens = previous_result[3]
+            
+            # Determine the previous group
+            if prev_best_series > 93:
+                previous_group = "Профи"
+            elif prev_best_series >= 80:
+                previous_group = "Полупрофи"
+            else:
+                previous_group = "Любители"
 
             # If new results are worse, ignore them
             if best_series < prev_best_series or \
@@ -150,12 +167,37 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 )
                 return
 
+        # Save the new result
         add_user_result(
             user_id,
             update.message.from_user.first_name,
             best_series,
             central_tens
         )
+        
+        # Determine the new group
+        new_group = None
+        if best_series > 93:
+            new_group = "Профи"
+        elif best_series >= 80:
+            new_group = "Полупрофи"
+        else:
+            new_group = "Любители"
+        
+        # Check if user moved to a higher group
+        if previous_result and previous_group != new_group:
+            # Group upgrade hierarchy: Любители -> Полупрофи -> Профи
+            if (previous_group == "Любители" and new_group in ["Полупрофи", "Профи"]) or \
+               (previous_group == "Полупрофи" and new_group == "Профи"):
+                # Send congratulation message
+                await update.message.reply_text(
+                    f'🎉 Поздравляем! 🎉\n'
+                    f'Вы улучшили свой результат и перешли в группу "{new_group}"!\n'
+                    f'Ваш новый результат: {best_series} очков, {central_tens} центральных десяток.'
+                )
+                return
+        
+        # Regular success message if no group change
         await update.message.reply_text('Ваши результаты были записаны!')
     else:
         await update.message.reply_text(
@@ -163,7 +205,60 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Display the current leaderboard of best results."""
+    """Display the current leaderboard of best results, filtered by user's skill group."""
+    if await handle_group_message(update, context):
+        return
+        
+    user_id = update.message.from_user.id
+    user_result = get_user_result(user_id)
+    
+    results = get_all_results()
+    
+    if not results:
+        await update.message.reply_text("Пока нет результатов для отображения.")
+        return
+    
+    # Determine user's group
+    user_group = "Любители"  # Default group if user has no results
+    if user_result:
+        best_series = user_result[2]
+        if best_series > 93:
+            user_group = "Профи"
+        elif best_series >= 80:
+            user_group = "Полупрофи"
+        else:
+            user_group = "Любители"
+    
+    # Filter results based on user's group
+    if user_group == "Профи":
+        filtered_results = [r for r in results if r[2] > 93]
+        group_title = "🏆 Группа Профи 🏆"
+    elif user_group == "Полупрофи":
+        filtered_results = [r for r in results if 80 <= r[2] <= 93]
+        group_title = "🏆 Группа Полупрофи 🏆"
+    else:  # Любители
+        filtered_results = [r for r in results if r[2] < 80]
+        group_title = "🏆 Группа Любители 🏆"
+    
+    # Sort results by best_series (descending) and then by central_tens (descending)
+    sorted_results = sorted(filtered_results, key=lambda x: (x[2], x[3]), reverse=True)
+    
+    # Format the leaderboard message
+    leaderboard_text = f"{group_title}\n\n"
+    
+    if not sorted_results:
+        leaderboard_text += "В этой группе пока нет результатов."
+    else:
+        for i, result in enumerate(sorted_results[:10], 1):  # Show top 10 results
+            username = result[1]
+            best_series = result[2]
+            central_tens = result[3]
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+    
+    await update.message.reply_text(leaderboard_text)
+
+async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Display top 10 results for each of the three skill groups."""
     if await handle_group_message(update, context):
         return
         
@@ -173,16 +268,53 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("Пока нет результатов для отображения.")
         return
     
-    # Sort results by best_series (descending) and then by central_tens (descending)
-    sorted_results = sorted(results, key=lambda x: (x[2], x[3]), reverse=True)
+    # Filter results into three groups
+    pro_results = [r for r in results if r[2] > 93]
+    semi_pro_results = [r for r in results if 80 <= r[2] <= 93]
+    amateur_results = [r for r in results if r[2] < 80]
     
-    # Format the leaderboard message
-    leaderboard_text = "🏆 Таблица лидеров 🏆\n\n"
-    for i, result in enumerate(sorted_results[:10], 1):  # Show top 10 results
-        username = result[1]
-        best_series = result[2]
-        central_tens = result[3]
-        leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+    # Sort each group by best_series and central_tens
+    pro_sorted = sorted(pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
+    semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
+    amateur_sorted = sorted(amateur_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
+    
+    # Format the message
+    leaderboard_text = "🏆 Таблица лидеров по всем группам 🏆\n\n"
+    
+    # Pro group
+    leaderboard_text += "👑 Группа Профи 👑\n"
+    if not pro_sorted:
+        leaderboard_text += "В этой группе пока нет результатов.\n\n"
+    else:
+        for i, result in enumerate(pro_sorted, 1):
+            username = result[1]
+            best_series = result[2]
+            central_tens = result[3]
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+        leaderboard_text += "\n"
+    
+    # Semi-pro group
+    leaderboard_text += "🥈 Группа Полупрофи 🥈\n"
+    if not semi_pro_sorted:
+        leaderboard_text += "В этой группе пока нет результатов.\n\n"
+    else:
+        for i, result in enumerate(semi_pro_sorted, 1):
+            username = result[1]
+            best_series = result[2]
+            central_tens = result[3]
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
+        leaderboard_text += "\n"
+    
+    # Amateur group
+    leaderboard_text += "🥉 Группа Любители 🥉\n"
+    if not amateur_sorted:
+        leaderboard_text += "В этой группе пока нет результатов.\n\n"
+    else:
+        for i, result in enumerate(amateur_sorted, 1):
+            username = result[1]
+            best_series = result[2]
+            central_tens = result[3]
+            leaderboard_text += f"{i}. {username}: {best_series} очков, {central_tens} центральных десяток\n"
     
     await update.message.reply_text(leaderboard_text)
 
@@ -194,10 +326,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     help_text = (
         "📋 Список команд бота:\n\n"
         "/status - Проверить ваш текущий результат\n"
-        "/leaderboard - Посмотреть таблицу лидеров\n"
+        "/leaderboard - Посмотреть таблицу лидеров вашей группы\n"
+        "/leaderboard_all - Посмотреть таблицу лидеров всех групп\n"
         "/help - Показать это сообщение\n\n"
         "Чтобы внести результаты стрельбы, просто отправьте два числа:\n"
-        "лучшая_серия количество_центральных_десяток\n"
+        "Лучшая_серия    Количество_центральных_десяток\n"
         "Например: 99 7"
     )
     
@@ -215,6 +348,7 @@ async def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("leaderboard", leaderboard))
+    application.add_handler(CommandHandler("leaderboard_all", leaderboard_all))
     application.add_handler(CommandHandler("help", help_command))
 
     # Register a message handler (for the best_series / central_tens input)
