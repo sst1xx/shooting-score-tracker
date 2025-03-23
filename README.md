@@ -5,9 +5,9 @@ This project is a Telegram bot designed for participants of a shooting group to 
 ## Features
 
 - Users can submit their best shooting series and the number of tens.
-- Users can attach a photo with their results.
+- Users can attach a photo with their results. //TODO
 - The bot compares new submissions with previous results and notifies users if their new results are worse.
-- A leaderboard is generated and published every two weeks on Monday mornings.
+- A leaderboard is generated and published every two weeks on Monday mornings (depends on your cron settings)
 - Users can check their current results using the `/status` command.
 
 ## Project Structure
