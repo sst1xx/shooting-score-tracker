@@ -172,9 +172,13 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 return
 
         # Save the new result
+        full_name = update.message.from_user.first_name
+        if update.message.from_user.last_name:
+            full_name += f" {update.message.from_user.last_name}"
+            
         add_user_result(
             user_id,
-            update.message.from_user.first_name,
+            full_name,
             best_series,
             total_tens
         )
