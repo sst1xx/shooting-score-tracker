@@ -43,6 +43,26 @@ async def publish_leaderboard():
             # Format the message
             message = "🏆 Таблица лидеров по всем группам 🏆\n\n"
             
+            # Add winners section first
+            message += "🏅 Наши победители 🏅\n"
+            
+            # Check if any group has participants
+            if not (pro_sorted or semi_pro_sorted or amateur_sorted):
+                message += "Пока нет участников ни в одной группе.\n"
+            else:
+                if pro_sorted:
+                    _, winner_pro, score_pro, tens_pro, *_ = pro_sorted[0]
+                    message += f"👑 Профи: {winner_pro} ({score_pro} очков, {tens_pro}*)\n"
+                if semi_pro_sorted:
+                    _, winner_semi, score_semi, tens_semi, *_ = semi_pro_sorted[0]
+                    message += f"🥈 Полупрофи: {winner_semi} ({score_semi} очков, {tens_semi})\n"
+                if amateur_sorted:
+                    _, winner_am, score_am, tens_am, *_ = amateur_sorted[0]
+                    message += f"🥉 Любители: {winner_am} ({score_am} очков, {tens_am})\n"
+            
+            # Now show the detailed leaderboard tables
+            message += "\n📊 Подробная таблица 📊\n\n"
+            
             # Pro group
             message += "👑 Группа Профи 👑\n"
             if not pro_sorted:
@@ -72,25 +92,8 @@ async def publish_leaderboard():
                     _, username, best_series, total_tens, *_ = result
                     message += f"{i}. {username}: {best_series} очков, {total_tens}\n"
                 
-            # Add winners section
-            message += "\n🏅 Наши победители 🏅\n"
-            
-            # Check if any group has participants
-            if not (pro_sorted or semi_pro_sorted or amateur_sorted):
-                message += "Пока нет участников ни в одной группе.\n"
-            else:
-                if pro_sorted:
-                    _, winner_pro, score_pro, tens_pro, *_ = pro_sorted[0]
-                    message += f"👑 Профи: {winner_pro} ({score_pro} очков, {tens_pro}*)\n"
-                if semi_pro_sorted:
-                    _, winner_semi, score_semi, tens_semi, *_ = semi_pro_sorted[0]
-                    message += f"🥈 Полупрофи: {winner_semi} ({score_semi} очков, {tens_semi})\n"
-                if amateur_sorted:
-                    _, winner_am, score_am, tens_am, *_ = amateur_sorted[0]
-                    message += f"🥉 Любители: {winner_am} ({score_am} очков, {tens_am})\n"
-                    
             # Add congratulatory message at the end
-            message += "\n🎉 Поздравляем победителей! Новый сезон начат. Вперед за новыми рекордами! 💪"
+            message += "\n🎉 Поздравляем победителей! Новый сезон начат. Вперед за новыми рекордами!"
 
         # Send message to group
         bot = Bot(token=BOT_TOKEN)

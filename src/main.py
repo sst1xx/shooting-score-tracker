@@ -276,8 +276,8 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     
     # Filter results into three groups
-    pro_results = [r for r in results if r[2] > 93]
-    semi_pro_results = [r for r in results if 80 <= r[2] <= 93]
+    pro_results = [r for r in results if r[2] >= 93]
+    semi_pro_results = [r for r in results if 80 <= r[2] < 93]
     amateur_results = [r for r in results if r[2] < 80]
     
     # Sort each group by best_series and total_tens
