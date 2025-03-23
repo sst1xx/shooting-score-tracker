@@ -52,13 +52,13 @@ async def publish_leaderboard():
             else:
                 if pro_sorted:
                     _, winner_pro, score_pro, tens_pro, *_ = pro_sorted[0]
-                    message += f"👑 Профи: {winner_pro} ({score_pro} очков, {tens_pro}*)\n"
+                    message += f"👑 Профи: {winner_pro} ({score_pro}, {tens_pro}*)\n"
                 if semi_pro_sorted:
                     _, winner_semi, score_semi, tens_semi, *_ = semi_pro_sorted[0]
-                    message += f"🥈 Полупрофи: {winner_semi} ({score_semi} очков, {tens_semi})\n"
+                    message += f"🥈 Полупрофи: {winner_semi} ({score_semi}, {tens_semi})\n"
                 if amateur_sorted:
                     _, winner_am, score_am, tens_am, *_ = amateur_sorted[0]
-                    message += f"🥉 Любители: {winner_am} ({score_am} очков, {tens_am})\n"
+                    message += f"🥉 Любители: {winner_am} ({score_am}, {tens_am})\n"
             
             # Now show the detailed leaderboard tables
             message += "\n📊 Подробная таблица 📊\n\n"
@@ -70,7 +70,7 @@ async def publish_leaderboard():
             else:
                 for i, result in enumerate(pro_sorted, 1):
                     _, username, best_series, total_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {total_tens}*\n"
+                    message += f"{i}. {username}: {best_series}, {total_tens}x\n"
                 message += "\n"
             
             # Semi-pro group
@@ -80,7 +80,7 @@ async def publish_leaderboard():
             else:
                 for i, result in enumerate(semi_pro_sorted, 1):
                     _, username, best_series, total_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {total_tens}\n"
+                    message += f"{i}. {username}: {best_series}, {total_tens}\n"
                 message += "\n"
             
             # Amateur group
@@ -90,7 +90,7 @@ async def publish_leaderboard():
             else:
                 for i, result in enumerate(amateur_sorted, 1):
                     _, username, best_series, total_tens, *_ = result
-                    message += f"{i}. {username}: {best_series} очков, {total_tens}\n"
+                    message += f"{i}. {username}: {best_series}, {total_tens}\n"
                 
             # Add congratulatory message at the end
             message += "\n🎉 Поздравляем победителей! Новый сезон начат. Вперед за новыми рекордами!"
