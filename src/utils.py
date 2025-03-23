@@ -2,13 +2,13 @@ from telegram import Bot
 from telegram.error import TelegramError, BadRequest, Forbidden, TimedOut
 import logging
 import re
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Store the current group ID in memory (initialized from config)
-_current_group_id = None
+# Store the current group IDs in memory (initialized from config)
+_current_group_ids = None
 
 async def is_user_in_chat(bot: Bot, user_id: int, chat_id: int) -> bool:
     """
@@ -39,7 +39,7 @@ async def is_user_in_chat(bot: Bot, user_id: int, chat_id: int) -> bool:
 
 async def is_user_in_group(user_id: int, bot: Bot) -> Tuple[bool, str]:
     """
-    Checks if a user is a member of the group specified in CHAT_ID.
+    Checks if a user is a member of any group specified in CHAT_ID.
     
     Args:
         user_id: User ID to check
@@ -48,33 +48,48 @@ async def is_user_in_group(user_id: int, bot: Bot) -> Tuple[bool, str]:
     Returns:
         Tuple (is_member, error_message)
     """
-    global _current_group_id
+    global _current_group_ids
     
-    # Initialize _current_group_id from config if not set yet
-    if _current_group_id is None:
+    # Initialize _current_group_ids from config if not set yet
+    if _current_group_ids is None:
         from config import CHAT_ID
-        _current_group_id = CHAT_ID
-        logger.info(f"Initialized group IDa: {_current_group_id}")
-    
-    try:
-        # Convert _current_group_id to int if it's a string
-        group_id = int(_current_group_id)
-        
-        logger.info(f"Checking membership of user {user_id} in group {group_id}")
-        
-        # Check membership
-        is_member = await is_user_in_chat(bot=bot, user_id=user_id, chat_id=group_id)
-        
-        if is_member:
-            return True, ""
+        # Parse multiple chat IDs from CHAT_ID string
+        if isinstance(CHAT_ID, str):
+            # Split by comma, semicolon, or space
+            ids = re.split(r'[,;\s]+', CHAT_ID.strip())
+            _current_group_ids = [id.strip() for id in ids if id.strip()]
         else:
-            return False, "Вы не являетесь участником группы. Пожалуйста, присоединитесь к группе для использования бота."
+            _current_group_ids = [str(CHAT_ID)]
+        logger.info(f"Initialized group IDs: {_current_group_ids}")
+    
+    if not _current_group_ids:
+        logger.error("No valid group IDs found in configuration")
+        return False, "Не настроены группы для проверки. Пожалуйста, свяжитесь с администратором."
+    
+    for group_id_str in _current_group_ids:
+        try:
+            # Convert group_id to int
+            group_id = int(group_id_str)
             
-    except TelegramError as e:
-        return await _handle_telegram_error(e, bot, user_id)
-    except Exception as e:
-        logger.error(f"Error when checking group membership: {e}")
-        return False, "Произошла ошибка при проверке членства в группе."
+            logger.info(f"Checking membership of user {user_id} in group {group_id}")
+            
+            # Check membership in this group
+            is_member = await is_user_in_chat(bot=bot, user_id=user_id, chat_id=group_id)
+            
+            if is_member:
+                # User is in at least one of the groups
+                return True, ""
+                
+        except TelegramError as e:
+            # Log the error but continue checking other groups
+            logger.warning(f"Error checking group {group_id_str}: {e}")
+            continue
+        except Exception as e:
+            logger.warning(f"Unexpected error checking group {group_id_str}: {e}")
+            continue
+    
+    # User is not in any of the groups
+    return False, "Вы не являетесь участником ни одной из разрешенных групп. Пожалуйста, присоединитесь к группе для использования бота."
 
 async def _handle_telegram_error(e: TelegramError, bot: Bot, user_id: int) -> Tuple[bool, str]:
     """
@@ -88,10 +103,9 @@ async def _handle_telegram_error(e: TelegramError, bot: Bot, user_id: int) -> Tu
     Returns:
         Tuple (is_member, error_message)
     """
-    global _current_group_id
     error_msg = str(e)
     
-    # Handle group migration (but don't update _current_group_id)
+    # Handle group migration (but don't update group IDs)
     if "Group migrated to supergroup" in error_msg:
         logger.info(f"Group migrated to supergroup: {error_msg}")
         new_group_id = _extract_new_group_id(error_msg)
@@ -99,7 +113,7 @@ async def _handle_telegram_error(e: TelegramError, bot: Bot, user_id: int) -> Tu
             logger.info(f"Detected new group ID: {new_group_id}")
             logger.warning("Group ID has changed but will not be automatically updated")
             
-            # Simply notify about migration but don't update _current_group_id
+            # Simply notify about migration but don't update group IDs
             return False, ("Группа была мигрирована в супергруппу. "
                            "Пожалуйста, обратитесь к администратору для обновления настроек бота.")
         
@@ -113,7 +127,6 @@ async def _handle_telegram_error(e: TelegramError, bot: Bot, user_id: int) -> Tu
         if "user not found" in error_lower:
             return False, "Вы не найдены в группе. Пожалуйста, вступите в группу."
         if "chat not found" in error_lower:
-            logger.warning(f"Chat not found: {_current_group_id}")
             return False, "Группа не найдена. Пожалуйста, свяжитесь с администратором."
     
     if isinstance(e, Forbidden):
