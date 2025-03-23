@@ -2,7 +2,9 @@ import logging
 import os
 import sys
 import asyncio
+import re
 from telegram import Bot
+from telegram.error import TelegramError
 from database import get_all_results, reset_database
 from config import BOT_TOKEN, CHAT_ID
 
@@ -21,8 +23,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def parse_chat_ids(chat_id_config):
+    """Parse CHAT_ID string into a list of chat IDs."""
+    if not chat_id_config:
+        return []
+    
+    if not isinstance(chat_id_config, str):
+        return [str(chat_id_config)]
+    
+    # Split by comma, semicolon, or space
+    ids = re.split(r'[,;\s]+', chat_id_config.strip())
+    return [id.strip() for id in ids if id.strip()]
+
 async def publish_leaderboard():
-    """Publish leaderboard to the group chat and reset the database."""
+    """Publish leaderboard to all group chats and reset the database."""
     try:
         # Get all results from the database
         results = get_all_results()
@@ -40,11 +54,8 @@ async def publish_leaderboard():
             semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
             amateur_sorted = sorted(amateur_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
             
-            # Format the message
-            message = "🏆 Таблица лидеров по всем группам 🏆\n\n"
-            
-            # Add winners section first
-            message += "🏅 Наши победители 🏅\n"
+            # Create message
+            message = "🏅 Наши победители 🏅\n\n"
             
             # Check if any group has participants
             if not (pro_sorted or semi_pro_sorted or amateur_sorted):
@@ -95,17 +106,40 @@ async def publish_leaderboard():
             # Add congratulatory message at the end
             message += "\n🎉 Поздравляем победителей! Новый сезон начат. Вперед за новыми рекордами!"
 
-        # Send message to group
-        bot = Bot(token=BOT_TOKEN)
-        await bot.send_message(chat_id=CHAT_ID, text=message)
-        logger.info(f"Leaderboard published successfully to group {CHAT_ID}")
+        # Parse CHAT_ID to get multiple group IDs
+        chat_ids = parse_chat_ids(CHAT_ID)
         
-        # Reset the database for the next period
-        reset_database()
-        logger.info("Database reset for next period")
+        if not chat_ids:
+            logger.error("No valid chat IDs found in configuration")
+            return
+            
+        logger.info(f"Attempting to publish leaderboard to {len(chat_ids)} groups: {chat_ids}")
+        
+        # Create bot instance
+        bot = Bot(token=BOT_TOKEN)
+        
+        # Send message to each group
+        success_count = 0
+        for chat_id in chat_ids:
+            try:
+                chat_id_int = int(chat_id)
+                await bot.send_message(chat_id=chat_id_int, text=message)
+                logger.info(f"Leaderboard published successfully to group {chat_id}")
+                success_count += 1
+            except TelegramError as e:
+                logger.error(f"Failed to send leaderboard to group {chat_id}: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error sending to group {chat_id}: {e}")
+        
+        if success_count > 0:
+            # Reset the database for the next period only if at least one publish was successful
+            reset_database()
+            logger.info("Database reset for next period")
+        else:
+            logger.error("Failed to publish leaderboard to any group. Database not reset.")
         
     except Exception as e:
-        logger.error(f"Error publishing leaderboard: {e}")
+        logger.error(f"Error in publish_leaderboard: {e}")
         raise
 
 if __name__ == "__main__":
