@@ -175,7 +175,8 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         full_name = update.message.from_user.first_name
         if update.message.from_user.last_name:
             full_name += f" {update.message.from_user.last_name}"
-            
+
+# TODO: save @username
         add_user_result(
             user_id,
             full_name,
