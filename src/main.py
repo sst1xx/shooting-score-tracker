@@ -76,7 +76,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if result:
         # result is a tuple of (user_id, username, best_series, total_tens, photo_id)
         if result[2] >= 93:
-            message = f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество центральных десяток: {result[3]}*"
+            message = f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество центральных десяток: {result[3]}x"
         else:
             message = f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество десяток: {result[3]}"
         
