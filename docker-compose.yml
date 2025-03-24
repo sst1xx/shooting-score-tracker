@@ -8,9 +8,3 @@ services:
       - ./data:/app/data
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('https://api.telegram.org/bot${BOT_TOKEN}/getMe')"]
-      interval: 120s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
