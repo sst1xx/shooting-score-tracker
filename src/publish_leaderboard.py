@@ -11,8 +11,8 @@ from config import BOT_TOKEN, CHAT_ID
 # Add parent directory to path to ensure imports work properly
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Create logs directory if it doesn't exist
-logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
+# Create logs directory in the data directory where we have write permissions
+logs_dir = os.path.join('/data', 'logs')
 os.makedirs(logs_dir, exist_ok=True)
 
 # Configure logging
