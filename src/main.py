@@ -1,11 +1,15 @@
 import asyncio
 import logging
+import os
+import sqlite3
+from datetime import datetime
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
     ContextTypes
 )
@@ -15,13 +19,247 @@ from database import create_database, add_user_result, get_user_result, validate
 from utils import is_user_in_group
 from config import BOT_TOKEN
 
+# Create data directory if it doesn't exist
+os.makedirs('data', exist_ok=True)
+
 # Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler(os.path.join('data', 'bot.log')),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
+# Constants
+CONSENT_DB = os.path.join('data', 'consent.db')
+
+# ==== CONSENT DATABASE FUNCTIONS ====
+def init_consent_db():
+    """Initialize the consent database tables."""
+    conn = sqlite3.connect(CONSENT_DB)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_consent (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            consent_given INTEGER,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    logger.info("Consent database initialized")
+
+def save_user_consent(user_id, username, first_name):
+    """Save user consent to the database."""
+    try:
+        conn = sqlite3.connect(CONSENT_DB)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO user_consent (user_id, username, first_name, consent_given)
+            VALUES (?, ?, ?, 1)
+        ''', (user_id, username, first_name))
+        conn.commit()
+        conn.close()
+        logger.info(f"User {username} (ID: {user_id}) has given consent")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving user consent: {e}")
+        return False
+
+def check_user_consent(user_id):
+    """Check if user has given consent."""
+    try:
+        conn = sqlite3.connect(CONSENT_DB)
+        cursor = conn.cursor()
+        cursor.execute('SELECT consent_given FROM user_consent WHERE user_id = ?', (user_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result is not None and result[0] == 1
+    except Exception as e:
+        logger.error(f"Error checking user consent: {e}")
+        return False
+
+def revoke_user_consent(user_id):
+    """Revoke a user's consent."""
+    try:
+        conn = sqlite3.connect(CONSENT_DB)
+        cursor = conn.cursor()
+        cursor.execute('UPDATE user_consent SET consent_given = 0 WHERE user_id = ?', (user_id,))
+        conn.commit()
+        conn.close()
+        logger.info(f"User ID {user_id} has revoked consent")
+        return True
+    except Exception as e:
+        logger.error(f"Error revoking user consent: {e}")
+        return False
+
+def get_consent_keyboard():
+    """Return the standard consent keyboard with three options."""
+    keyboard = [
+        [InlineKeyboardButton("✅ Согласен", callback_data='agree')],
+        [InlineKeyboardButton("📋 Просмотреть политику обработки данных", callback_data='view_policy')],
+        [InlineKeyboardButton("❌ Не согласен", callback_data='disagree')]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+# ==== CONSENT HANDLERS ====
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a welcome message and request user consent if not already given."""
+    if await handle_group_message(update, context):
+        return
+        
+    user = update.effective_user
+    
+    # Check consent first
+    if check_user_consent(user.id):
+        logger.info(f"User {user.username} (ID: {user.id}) already gave consent, proceeding")
+        await update.message.reply_text(f"С возвращением, {user.first_name}! 👋\nТы уже дал согласие, можем продолжать.")
+        
+        # Check group membership
+        user_id = update.message.from_user.id
+        is_member, error_message = await is_user_in_group(user_id, context.bot)
+
+        if not is_member:
+            await update.message.reply_text(f'Для использования бота необходимо быть участником группы. {error_message}')
+            return
+            
+        await update.message.reply_text(
+            'Добро пожаловать в бот для результатов стрельбы!'
+        )
+        await help_command(update, context)
+        return
+
+    # Request consent if not given
+    reply_markup = get_consent_keyboard()
+
+    text = (
+        "Привет! 😊\n\n"
+        "Перед тем как начать, ознакомься с пользовательским соглашением.\n"
+        "Мы собираем минимальные данные для улучшения сервиса.\n\n"
+        "Нажимая кнопку ниже, ты подтверждаешь своё согласие с условиями."
+    )
+    await update.message.reply_text(text, reply_markup=reply_markup)
+    logger.info(f"Consent request sent to user {user.username} (ID: {user.id})")
+
+async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the user's consent choice from inline keyboard."""
+    query = update.callback_query
+    user = query.from_user
+    await query.answer()
+
+    if query.data == 'agree':
+        success = save_user_consent(
+            user_id=user.id,
+            username=user.username,
+            first_name=user.first_name
+        )
+        
+        if success:
+            await query.edit_message_text("Спасибо за согласие! 🎉 Можем продолжать.")
+            
+            # Check group membership after consent
+            is_member, error_message = await is_user_in_group(user.id, context.bot)
+            if not is_member:
+                await context.bot.send_message(
+                    chat_id=user.id,
+                    text=f'Для использования бота необходимо быть участником группы. {error_message}'
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=user.id,
+                    text='Добро пожаловать в бот для результатов стрельбы!'
+                )
+                # Send help message
+                help_text = (
+                    "📋 Список команд бота:\n\n"
+                    "/status - Проверить ваш текущий результат\n"
+                    "/leaderboard - Посмотреть таблицу лидеров вашей группы\n"
+                    "/leaderboard_all - Посмотреть таблицу лидеров всех групп\n"
+                    "/revoke - Отозвать согласие на обработку данных\n"
+                    "/help - Показать это сообщение\n\n"
+                    "Чтобы внести результаты стрельбы, просто отправьте два числа:\n"
+                    "Серия КоличествоДесяток(центровых, если серия >=93)\n"
+                    "Например: 92 3"
+                )
+                await context.bot.send_message(chat_id=user.id, text=help_text)
+        else:
+            await query.edit_message_text("Произошла ошибка при сохранении согласия. Пожалуйста, попробуйте позже.")
+    
+    elif query.data == 'disagree':
+        await query.edit_message_text("Понятно. Без согласия мы не можем продолжить 😢")
+        logger.info(f"User {user.username} (ID: {user.id}) has declined consent")
+    
+    elif query.data == 'view_policy':
+        try:
+            # Try to read the policy file
+            policy_path = os.path.join(os.path.dirname(__file__), '..', 'policy.md')
+            with open(policy_path, 'r', encoding='utf-8') as file:
+                policy_text = file.read()
+                
+            # Send policy to user
+            await query.edit_message_text(policy_text, parse_mode='Markdown')
+            logger.info(f"Policy viewed by user {user.username} (ID: {user.id})")
+            
+            # Show the consent options again in a new message
+            reply_markup = get_consent_keyboard()
+            
+            text = "Пожалуйста, подтвердите своё согласие с политикой обработки персональных данных:"
+            await context.bot.send_message(
+                chat_id=user.id,
+                text=text,
+                reply_markup=reply_markup
+            )
+            
+        except FileNotFoundError:
+            logger.error(f"Policy file not found at {policy_path}")
+            await query.edit_message_text(
+                "Извините, файл политики обработки данных не найден. Пожалуйста, обратитесь к администратору."
+            )
+            
+            # Re-display consent buttons
+            reply_markup = get_consent_keyboard()
+            await context.bot.send_message(
+                chat_id=user.id,
+                text="Пожалуйста, выберите один из вариантов:",
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            logger.error(f"Error displaying policy to user {user.id}: {e}")
+            await query.edit_message_text(
+                "Извините, произошла ошибка при загрузке политики. Пожалуйста, попробуйте позже."
+            )
+            
+            # Re-display consent buttons
+            reply_markup = get_consent_keyboard()
+            await context.bot.send_message(
+                chat_id=user.id,
+                text="Пожалуйста, выберите один из вариантов:",
+                reply_markup=reply_markup
+            )
+
+async def revoke_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Revoke user's consent."""
+    if await handle_group_message(update, context):
+        return
+        
+    user = update.effective_user
+    if not check_user_consent(user.id):
+        await update.message.reply_text("Ты ещё не давал согласие или уже его отозвал.")
+        return
+
+    success = revoke_user_consent(user.id)
+    if success:
+        await update.message.reply_text("Твоё согласие успешно отозвано. Если захочешь вернуться — просто напиши /start.")
+        logger.info(f"User {user.username} (ID: {user.id}) has revoked consent")
+    else:
+        await update.message.reply_text("Произошла ошибка при отзыве согласия. Пожалуйста, попробуйте позже.")
+
+# ==== EXISTING CODE WITH CONSENT CHECK ADDED ====
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """
     Check if message is from a group chat:
@@ -66,12 +304,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
     await help_command(update, context)
 
+# Update existing handlers to check for consent
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show a user's currently saved result."""
     if await handle_group_message(update, context):
         return
         
     user_id = update.message.from_user.id
+    
+    # Check consent first
+    if not check_user_consent(user_id):
+        await update.message.reply_text("Для продолжения необходимо дать согласие на обработку данных. Используйте /start.")
+        return
+    
+    # Existing code continues...
     result = get_user_result(user_id)
     if result:
         # result is a tuple of (user_id, username, best_series, total_tens, photo_id)
@@ -372,20 +618,26 @@ async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text(welcome_text)
         logger.info(f"Welcomed new member {new_member.first_name} to the group")
 
+# Update the main function to initialize consent DB and add new handlers
 async def main() -> None:
     """Set up the database, configure the bot, add handlers, and run polling."""
-    # Initialize or create your database
+    # Initialize databases
     create_database()
+    init_consent_db()
 
     # Create the bot application
     application = Application.builder().token(BOT_TOKEN).build()
 
     # Register command handlers
-    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("start", start_command))  # Use new consent-aware start handler
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("leaderboard", leaderboard))
     application.add_handler(CommandHandler("leaderboard_all", leaderboard_all))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("revoke", revoke_command))  # Add the revoke command handler
+    
+    # Add callback query handler for consent buttons
+    application.add_handler(CallbackQueryHandler(handle_consent))
 
     # Add handler for new chat members
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
@@ -395,8 +647,6 @@ async def main() -> None:
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_result)
     )
 
-    # Removed scheduler code - will be handled by cron instead
-    
     # Start the bot and run until user presses Ctrl-C
     await application.initialize()
     await application.start()

@@ -6,7 +6,7 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Unified database path
-DB_PATH = os.path.join(DATA_DIR, 'unified_database.sqlite')
+DB_PATH = os.path.join(DATA_DIR, 'scoreboard.db')
 
 def create_connection():
     conn = sqlite3.connect(DB_PATH)
