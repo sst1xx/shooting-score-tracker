@@ -63,10 +63,10 @@ async def publish_leaderboard():
             else:
                 if pro_sorted:
                     _, winner_pro, score_pro, tens_pro, *_ = pro_sorted[0]
-                    message += f"👑 Профи: {winner_pro} ({score_pro}, {tens_pro}*)\n"
+                    message += f"👑 Профи: {winner_pro} ({score_pro}, {tens_pro}x)\n"
                 if semi_pro_sorted:
                     _, winner_semi, score_semi, tens_semi, *_ = semi_pro_sorted[0]
-                    message += f"🥈 Полупрофи: {winner_semi} ({score_semi}, {tens_semi})\n"
+                    message += f"🥈 Продвинутые: {winner_semi} ({score_semi}, {tens_semi})\n"
                 if amateur_sorted:
                     _, winner_am, score_am, tens_am, *_ = amateur_sorted[0]
                     message += f"🥉 Любители: {winner_am} ({score_am}, {tens_am})\n"
@@ -85,7 +85,7 @@ async def publish_leaderboard():
                 message += "\n"
             
             # Semi-pro group
-            message += "🥈 Группа Полупрофи 🥈\n"
+            message += "🥈 Группа Продвинутые 🥈\n"
             if not semi_pro_sorted:
                 message += "В этой группе пока нет результатов.\n\n"
             else:

@@ -159,7 +159,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             if prev_best_series >= 93:
                 previous_group = "Профи"
             elif prev_best_series >= 80:
-                previous_group = "Полупрофи"
+                previous_group = "Продвинутые"
             else:
                 previous_group = "Любители"
 
@@ -189,15 +189,15 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if best_series >= 93:
             new_group = "Профи"
         elif best_series >= 80:
-            new_group = "Полупрофи"
+            new_group = "Продвинутые"
         else:
             new_group = "Любители"
         
         # Check if user moved to a higher group
         if previous_result and previous_group != new_group:
-            # Group upgrade hierarchy: Любители -> Полупрофи -> Профи
-            if (previous_group == "Любители" and new_group in ["Полупрофи", "Профи"]) or \
-               (previous_group == "Полупрофи" and new_group == "Профи"):
+            # Group upgrade hierarchy: Любители -> Продвинутые -> Профи
+            if (previous_group == "Любители" and new_group in ["Продвинутые", "Профи"]) or \
+               (previous_group == "Продвинутые" and new_group == "Профи"):
                 # Send congratulation message
                 await update.message.reply_text(
                     f'🎉 Поздравляем! 🎉\n'
@@ -234,7 +234,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         if best_series >= 93:
             user_group = "Профи"
         elif best_series >= 80:
-            user_group = "Полупрофи"
+            user_group = "Продвинутые"
         else:
             user_group = "Любители"
     
@@ -242,9 +242,9 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if user_group == "Профи":
         filtered_results = [r for r in results if r[2] >= 93]
         group_title = "🏆 Группа Профи 🏆"
-    elif user_group == "Полупрофи":
+    elif user_group == "Продвинутые":
         filtered_results = [r for r in results if 80 <= r[2] <= 92]
-        group_title = "🏆 Группа Полупрофи 🏆"
+        group_title = "🏆 Группа Продвинутые 🏆"
     else:  # Любители
         filtered_results = [r for r in results if r[2] <= 79]
         group_title = "🏆 Группа Любители 🏆"
@@ -306,7 +306,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         leaderboard_text += "\n"
     
     # Semi-pro group
-    leaderboard_text += "🥈 Группа Полупрофи 🥈\n"
+    leaderboard_text += "🥈 Группа Продвинутые 🥈\n"
     if not semi_pro_sorted:
         leaderboard_text += "В этой группе пока нет результатов.\n\n"
     else:
