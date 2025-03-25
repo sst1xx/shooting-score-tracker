@@ -7,8 +7,8 @@ import logging
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Create data directory if it doesn't exist
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'data')
+# Get data directory from environment variable or use default
+DATA_DIR = os.environ.get('DATA_DIR', './data')
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Constants

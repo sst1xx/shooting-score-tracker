@@ -39,7 +39,7 @@ from user import (
 from config import BOT_TOKEN
 
 # Get data directory from environment variable or use default
-DATA_DIR = os.environ.get('DATA_DIR', 'data')
+DATA_DIR = os.environ.get('DATA_DIR', './data')
 
 # Create data directory if it doesn't exist
 os.makedirs(DATA_DIR, exist_ok=True)
