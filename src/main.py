@@ -436,8 +436,8 @@ async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_
 async def main() -> None:
     """Set up the database, configure the bot, add handlers, and run polling."""
     # Initialize databases - pass the data directory where needed
-    create_database(DATA_DIR)
-    init_consent_db(CONSENT_DB)
+    create_database()  # Remove the DATA_DIR parameter
+    init_consent_db()
 
     # Create the bot application
     application = Application.builder().token(BOT_TOKEN).build()
@@ -479,5 +479,5 @@ async def main() -> None:
         logger.info("Bot has been shut down.")
 
 if __name__ == "__main__":
-    create_database(DATA_DIR)
+    create_database()  # Remove the DATA_DIR parameter
     asyncio.run(main())
