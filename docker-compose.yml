@@ -5,6 +5,9 @@ services:
     build: .
     restart: unless-stopped
     volumes:
-      - ./data:/app/data
+      - db-data:/app/data
     env_file:
       - .env
+
+volumes:
+  db-data:
