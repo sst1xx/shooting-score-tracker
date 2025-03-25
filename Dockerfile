@@ -22,16 +22,16 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DATA_DIR=/data
+    DATA_DIR=/app/data
 
 # Set working directory
 WORKDIR /app
 
 # Create the data directory with proper permissions
-RUN mkdir -p /data && \
+RUN mkdir -p /app/data && \
     addgroup --system appgroup && \
     adduser --system --group appuser && \
-    chown -R appuser:appgroup /data
+    chown -R appuser:appgroup /app/data
 
 # Copy installed dependencies from build stage
 COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -45,7 +45,7 @@ COPY README.md /app/
 RUN chown -R appuser:appgroup /app
 
 # Create the data volume with the correct path
-VOLUME ["/data"]
+VOLUME ["/app/data"]
 
 # Change to non-root user
 USER appuser

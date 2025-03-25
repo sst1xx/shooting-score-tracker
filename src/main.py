@@ -38,8 +38,11 @@ from user import (
 # from leaderboard import leaderboard, leaderboard_all
 from config import BOT_TOKEN
 
+# Get data directory from environment variable or use default
+DATA_DIR = os.environ.get('DATA_DIR', 'data')
+
 # Create data directory if it doesn't exist
-os.makedirs('data', exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
@@ -51,8 +54,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Constants
-CONSENT_DB = os.path.join('data', 'consent.db')
+# Constants - use environment-based path
+CONSENT_DB = os.path.join(DATA_DIR, 'consent.db')
 
 # Help text constant to avoid duplication
 HELP_TEXT = (
@@ -156,8 +159,8 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     elif query.data == 'view_policy':
         try:
-            # Get the policy file path
-            policy_path = os.path.join(os.path.dirname(__file__), '..', 'policy.pdf')
+            # Get the policy file path - use DATA_DIR instead of relative path
+            policy_path = os.path.join(DATA_DIR, 'policy.pdf')
             
             # Edit the current message to inform the user
             await query.edit_message_text("Отправляю файл политики обработки данных...")
@@ -432,9 +435,9 @@ async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_
 # Update the main function to initialize consent DB and add new handlers
 async def main() -> None:
     """Set up the database, configure the bot, add handlers, and run polling."""
-    # Initialize databases
-    create_database()
-    init_consent_db()
+    # Initialize databases - pass the data directory where needed
+    create_database(DATA_DIR)
+    init_consent_db(CONSENT_DB)
 
     # Create the bot application
     application = Application.builder().token(BOT_TOKEN).build()
@@ -476,5 +479,5 @@ async def main() -> None:
         logger.info("Bot has been shut down.")
 
 if __name__ == "__main__":
-    create_database()
+    create_database(DATA_DIR)
     asyncio.run(main())
