@@ -14,9 +14,28 @@ from telegram.ext import (
     ContextTypes
 )
 
-# Import your modules (make sure these exist in your project)
-from database import create_database, add_user_result, get_user_result, validate_input, get_all_results
-from utils import is_user_in_group
+# Import from the refactored database package
+from database import (
+    init_consent_db,
+    create_database,
+    add_user_result,
+    get_user_result,
+    validate_input,
+    get_all_results
+)
+# Import from the new user module
+from user import (
+    is_user_in_group,
+    init_consent_db,
+    save_user_consent,
+    check_user_consent,
+    revoke_user_consent,
+    handle_group_message,  # Updated to import from user module
+    leaderboard,
+    leaderboard_all  # Import leaderboard functions from user package
+)
+# Remove this import as it's now included in the user package
+# from leaderboard import leaderboard, leaderboard_all
 from config import BOT_TOKEN
 
 # Create data directory if it doesn't exist
@@ -34,68 +53,24 @@ logger = logging.getLogger(__name__)
 
 # Constants
 CONSENT_DB = os.path.join('data', 'consent.db')
+WELCOME_MESSAGE = (
+    "Ну что, стрелок, рад тебя видеть! 😊\n"
+    "Прицелился? Дыхание ровное? Тогда поехали — покажем красивую стрельбу! 💪🎯"
+)
 
-# ==== CONSENT DATABASE FUNCTIONS ====
-def init_consent_db():
-    """Initialize the consent database tables."""
-    conn = sqlite3.connect(CONSENT_DB)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_consent (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            consent_given INTEGER,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-    logger.info("Consent database initialized")
 
-def save_user_consent(user_id, username, first_name):
-    """Save user consent to the database."""
-    try:
-        conn = sqlite3.connect(CONSENT_DB)
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT OR REPLACE INTO user_consent (user_id, username, first_name, consent_given)
-            VALUES (?, ?, ?, 1)
-        ''', (user_id, username, first_name))
-        conn.commit()
-        conn.close()
-        logger.info(f"User {username} (ID: {user_id}) has given consent")
-        return True
-    except Exception as e:
-        logger.error(f"Error saving user consent: {e}")
-        return False
-
-def check_user_consent(user_id):
-    """Check if user has given consent."""
-    try:
-        conn = sqlite3.connect(CONSENT_DB)
-        cursor = conn.cursor()
-        cursor.execute('SELECT consent_given FROM user_consent WHERE user_id = ?', (user_id,))
-        result = cursor.fetchone()
-        conn.close()
-        return result is not None and result[0] == 1
-    except Exception as e:
-        logger.error(f"Error checking user consent: {e}")
-        return False
-
-def revoke_user_consent(user_id):
-    """Revoke a user's consent."""
-    try:
-        conn = sqlite3.connect(CONSENT_DB)
-        cursor = conn.cursor()
-        cursor.execute('UPDATE user_consent SET consent_given = 0 WHERE user_id = ?', (user_id,))
-        conn.commit()
-        conn.close()
-        logger.info(f"User ID {user_id} has revoked consent")
-        return True
-    except Exception as e:
-        logger.error(f"Error revoking user consent: {e}")
-        return False
+# Help text constant to avoid duplication
+HELP_TEXT = (
+    "📋 Список команд бота:\n\n"
+    "/status - Проверить ваш текущий результат\n"
+    "/leaderboard - Посмотреть таблицу лидеров вашей группы\n"
+    "/leaderboard_all - Посмотреть таблицу лидеров всех групп\n"
+    "/revoke - Отозвать согласие на обработку данных\n"
+    "/help - Показать это сообщение\n\n"
+    "Чтобы внести результаты стрельбы, просто отправьте два числа:\n"
+    "Серия КоличествоДесяток(центровых, если серия >=93)\n"
+    "Например: 92 3"
+)
 
 def get_consent_keyboard():
     """Return the standard consent keyboard with three options."""
@@ -117,7 +92,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Check consent first
     if check_user_consent(user.id):
         logger.info(f"User {user.username} (ID: {user.id}) already gave consent, proceeding")
-        await update.message.reply_text(f"С возвращением, {user.first_name}! 👋\nТы уже дал согласие, можем продолжать.")
+        await update.message.reply_text(f"С возвращением, {user.first_name}! 👋\nТы уже дал согласие на обработку персональных данных, можем продолжать.")
         
         # Check group membership
         user_id = update.message.from_user.id
@@ -127,9 +102,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await update.message.reply_text(f'Для использования бота необходимо быть участником группы. {error_message}')
             return
             
-        await update.message.reply_text(
-            'Добро пожаловать в бот для результатов стрельбы!'
-        )
+        await update.message.reply_text(WELCOME_MESSAGE)
         await help_command(update, context)
         return
 
@@ -137,11 +110,13 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     reply_markup = get_consent_keyboard()
 
     text = (
-        "Привет! 😊\n\n"
-        "Перед тем как начать, ознакомься с пользовательским соглашением.\n"
-        "Мы собираем минимальные данные для улучшения сервиса.\n\n"
-        "Нажимая кнопку ниже, ты подтверждаешь своё согласие с условиями."
-    )
+        "Привет, стрелок! 👋\n\n"
+        "Прежде чем выйти на рубеж — один важный шаг. Ознакомься с пользовательским соглашением.\n"
+        "Мы сохраняем результаты твоей стрельбы — только по минимуму и исключительно ради честной статистики. 📊🔐\n\n"
+        "Нажимая кнопку ниже, ты подтверждаешь своё согласие с условиями.\n"
+        "С этого момента — ты в игре. Внимание... Готовность... Начали! 💥🎯"
+            )
+
     await update.message.reply_text(text, reply_markup=reply_markup)
     logger.info(f"Consent request sent to user {user.username} (ID: {user.id})")
 
@@ -159,7 +134,11 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         
         if success:
-            await query.edit_message_text("Спасибо за согласие! 🎉 Можем продолжать.")
+            await query.edit_message_text(
+                "Есть контакт! 🎉 Спасибо за согласие — выстрел в десятку! 🎯\n\n"
+                "Теперь всё готово: рубеж открыт, мишени ждут, команда болеет за тебя! 🚀\n"
+                "Вперёд к победам и ярким результатам! 🥇💪"
+            )
             
             # Check group membership after consent
             is_member, error_message = await is_user_in_group(user.id, context.bot)
@@ -171,26 +150,18 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             else:
                 await context.bot.send_message(
                     chat_id=user.id,
-                    text='Добро пожаловать в бот для результатов стрельбы!'
+                    text=WELCOME_MESSAGE
                 )
-                # Send help message
-                help_text = (
-                    "📋 Список команд бота:\n\n"
-                    "/status - Проверить ваш текущий результат\n"
-                    "/leaderboard - Посмотреть таблицу лидеров вашей группы\n"
-                    "/leaderboard_all - Посмотреть таблицу лидеров всех групп\n"
-                    "/revoke - Отозвать согласие на обработку данных\n"
-                    "/help - Показать это сообщение\n\n"
-                    "Чтобы внести результаты стрельбы, просто отправьте два числа:\n"
-                    "Серия КоличествоДесяток(центровых, если серия >=93)\n"
-                    "Например: 92 3"
-                )
-                await context.bot.send_message(chat_id=user.id, text=help_text)
+                # Send help message using the constant
+                await context.bot.send_message(chat_id=user.id, text=HELP_TEXT)
         else:
             await query.edit_message_text("Произошла ошибка при сохранении согласия. Пожалуйста, попробуйте позже.")
     
     elif query.data == 'disagree':
-        await query.edit_message_text("Понятно. Без согласия мы не можем продолжить 😢")
+        await query.edit_message_text(
+            "Понял тебя. Без согласия дальше идти нельзя — такие правила на рубеже. 😔\n"
+            "Если передумаешь — команда и мишени будут ждать. 🎯"
+        )
         logger.info(f"User {user.username} (ID: {user.id}) has declined consent")
     
     elif query.data == 'view_policy':
@@ -259,55 +230,15 @@ async def revoke_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     success = revoke_user_consent(user.id)
     if success:
-        await update.message.reply_text("Твоё согласие успешно отозвано. Если захочешь вернуться — просто напиши /start.")
+        await update.message.reply_text(
+            "Ты сделал свой выбор — спокойно, сосредоточенно, как перед последним выстрелом в финале. "
+            "Но запомни: настоящий стрелок никогда не теряет хватку. Он просто уходит с рубежа, чтобы вернуться сильнее.\n\n"
+            "Когда почувствуешь, что дыхание ровное, хват уверенный и снова хочется в бой — просто напиши /start. "
+            "Мишени ждут. Команда готова. А ты уже знаешь, как это — бить точно в центр. 🎯🥇"
+)
         logger.info(f"User {user.username} (ID: {user.id}) has revoked consent")
     else:
         await update.message.reply_text("Произошла ошибка при отзыве согласия. Пожалуйста, попробуйте позже.")
-
-# ==== EXISTING CODE WITH CONSENT CHECK ADDED ====
-async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """
-    Check if message is from a group chat:
-    - If bot is mentioned, respond with a message to use private chat
-    - Otherwise silently ignore
-    Returns True if the message is from a group chat (meaning it should be ignored).
-    """
-    try:
-        if update.effective_chat and update.effective_chat.type in ['group', 'supergroup']:
-            # Check if bot is mentioned in the message
-            if update.message and update.message.text:
-                bot_username = context.bot.username
-                if f"@{bot_username}" in update.message.text:
-                    logger.info(f"Bot mentioned in group chat by {update.message.from_user.username}")
-                    # Reply only when mentioned
-                    await update.message.reply_text(
-                        f'@{update.message.from_user.username}, для внесения статистики и просмотра результатов, '
-                        'пожалуйста, общайтесь со мной напрямую, чтобы не засорять общий чат.'
-                    )
-            
-            # Always return True for group messages to prevent further processing
-            return True
-    except Exception as e:
-        logger.error(f"Error in handle_group_message: {e}")
-    
-    return False  # Not a group message, proceed with normal handling
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a welcome message when the user issues /start."""
-    if await handle_group_message(update, context):
-        return
-        
-    user_id = update.message.from_user.id
-    is_member, error_message = await is_user_in_group(user_id, context.bot)
-
-    if not is_member:
-        await update.message.reply_text(f'Для использования бота необходимо быть участником группы. {error_message}')
-        return
-        
-    await update.message.reply_text(
-        'Добро пожаловать в бот для результатов стрельбы!'
-    )
-    await help_command(update, context)
 
 # Update existing handlers to check for consent
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -319,7 +250,11 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     # Check consent first
     if not check_user_consent(user_id):
-        await update.message.reply_text("Для продолжения необходимо дать согласие на обработку данных. Используйте /start.")
+        await update.message.reply_text(
+            "Перед выходом на линию нужен чёткий сигнал согласия. 📝\n"
+            "Без этого — ни одного выстрела.\n\n"
+            "Готов продолжить? Используй команду /start и возвращайся на рубеж. 🎯"
+        )
         return
     
     # Existing code continues...
@@ -345,6 +280,14 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
         
     user_id = update.message.from_user.id
+    
+    # Check if user has given consent
+    if not check_user_consent(user_id):
+        await update.message.reply_text(
+            "Для отправки результатов необходимо дать согласие на обработку данных. "
+            "Пожалуйста, используйте команду /start и примите условия соглашения."
+        )
+        return
 
     # Validate user is in group
     is_member, error_message = await is_user_in_group(user_id, context.bot)
@@ -464,140 +407,12 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             'Неверный ввод. Пожалуйста, убедитесь, что ваши результаты корректны.'
         )
 
-async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Display the current leaderboard of best results, filtered by user's skill group."""
-    if await handle_group_message(update, context):
-        return
-        
-    user_id = update.message.from_user.id
-    user_result = get_user_result(user_id)
-    
-    results = get_all_results()
-    
-    if not results:
-        await update.message.reply_text("Пока нет результатов для отображения.")
-        return
-    
-    # Determine user's group
-    user_group = "Любители"  # Default group if user has no results
-    if user_result:
-        best_series = user_result[2]
-        if best_series >= 93:
-            user_group = "Профи"
-        elif best_series >= 80:
-            user_group = "Продвинутые"
-        else:
-            user_group = "Любители"
-    
-    # Filter results based on user's group
-    if user_group == "Профи":
-        filtered_results = [r for r in results if r[2] >= 93]
-        group_title = "🏆 Группа Профи 🏆"
-    elif user_group == "Продвинутые":
-        filtered_results = [r for r in results if 80 <= r[2] <= 92]
-        group_title = "🏆 Группа Продвинутые 🏆"
-    else:  # Любители
-        filtered_results = [r for r in results if r[2] <= 79]
-        group_title = "🏆 Группа Любители 🏆"
-    
-    # Sort results by best_series (descending) and then by total_tens (descending)
-    sorted_results = sorted(filtered_results, key=lambda x: (x[2], x[3]), reverse=True)
-    
-    # Format the leaderboard message
-    leaderboard_text = f"{group_title}\n\n"
-    
-    if not sorted_results:
-        leaderboard_text += "В этой группе пока нет результатов."
-    else:
-        for i, result in enumerate(sorted_results[:10], 1):  # Show top 10 results
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
-            if user_group == "Профи":
-                leaderboard_text += f"{i}. {username}: {best_series}, {total_tens}x\n"
-            else:
-                leaderboard_text += f"{i}. {username}: {best_series}, {total_tens}\n"
-    
-    await update.message.reply_text(leaderboard_text)
-
-async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Display top 10 results for each of the three skill groups."""
-    if await handle_group_message(update, context):
-        return
-        
-    results = get_all_results()
-    
-    if not results:
-        await update.message.reply_text("Пока нет результатов для отображения.")
-        return
-    
-    # Filter results into three groups
-    pro_results = [r for r in results if r[2] >= 93]
-    semi_pro_results = [r for r in results if 80 <= r[2] < 93]
-    amateur_results = [r for r in results if r[2] < 80]
-    
-    # Sort each group by best_series and total_tens
-    pro_sorted = sorted(pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
-    semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
-    amateur_sorted = sorted(amateur_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
-    
-    # Format the message
-    leaderboard_text = "🏆 Таблица лидеров по всем группам 🏆\n\n"
-    
-    # Pro group
-    leaderboard_text += "👑 Группа Профи 👑\n"
-    if not pro_sorted:
-        leaderboard_text += "В этой группе пока нет результатов.\n\n"
-    else:
-        for i, result in enumerate(pro_sorted, 1):
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series}, {total_tens}x\n"
-        leaderboard_text += "\n"
-    
-    # Semi-pro group
-    leaderboard_text += "🥈 Группа Продвинутые 🥈\n"
-    if not semi_pro_sorted:
-        leaderboard_text += "В этой группе пока нет результатов.\n\n"
-    else:
-        for i, result in enumerate(semi_pro_sorted, 1):
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series}, {total_tens}\n"
-        leaderboard_text += "\n"
-    
-    # Amateur group
-    leaderboard_text += "🥉 Группа Любители 🥉\n"
-    if not amateur_sorted:
-        leaderboard_text += "В этой группе пока нет результатов.\n\n"
-    else:
-        for i, result in enumerate(amateur_sorted, 1):
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series}, {total_tens}\n"
-    
-    await update.message.reply_text(leaderboard_text)
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a help message when the user issues /help."""
     if await handle_group_message(update, context):
         return
         
-    help_text = (
-        "📋 Список команд бота:\n\n"
-        "/status - Проверить ваш текущий результат\n"
-        "/leaderboard - Посмотреть таблицу лидеров вашей группы\n"
-        "/leaderboard_all - Посмотреть таблицу лидеров всех групп\n"
-        "/help - Показать это сообщение\n\n"
-        "Чтобы внести результаты стрельбы, просто отправьте два числа:\n"
-        "Серия КоличествоДесяток(центровых, если серия >=93)\n"
-        "Например: 92 3"
-    )
-    
-    await update.message.reply_text(help_text)
+    await update.message.reply_text(HELP_TEXT)
 
 async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Welcome new members to the group with instructions."""

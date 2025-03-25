@@ -18,6 +18,3 @@ if not BOT_TOKEN:
 
 if not CHAT_ID:
     logging.critical("CHAT_ID not found in environment variables!")
-
-
-# print(f"CHAT_ID из конфигурации: {CHAT_ID}")
