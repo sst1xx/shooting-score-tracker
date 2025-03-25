@@ -157,7 +157,7 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif query.data == 'view_policy':
         try:
             # Get the policy file path
-            policy_path = os.path.join(os.path.dirname(__file__), '..', 'policy.md')
+            policy_path = os.path.join(os.path.dirname(__file__), '..', 'policy.pdf')
             
             # Edit the current message to inform the user
             await query.edit_message_text("Отправляю файл политики обработки данных...")
