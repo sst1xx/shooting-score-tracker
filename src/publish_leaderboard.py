@@ -18,8 +18,7 @@ os.makedirs(logs_dir, exist_ok=True)
 # Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
-    filename=os.path.join(logs_dir, 'leaderboard.log')
+    level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 

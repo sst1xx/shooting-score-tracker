@@ -27,7 +27,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
     handlers=[
-        logging.FileHandler(os.path.join('data', 'bot.log')),
         logging.StreamHandler()
     ]
 )
@@ -196,14 +195,20 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     elif query.data == 'view_policy':
         try:
-            # Try to read the policy file
+            # Get the policy file path
             policy_path = os.path.join(os.path.dirname(__file__), '..', 'policy.md')
-            with open(policy_path, 'r', encoding='utf-8') as file:
-                policy_text = file.read()
-                
-            # Send policy to user
-            await query.edit_message_text(policy_text, parse_mode='Markdown')
-            logger.info(f"Policy viewed by user {user.username} (ID: {user.id})")
+            
+            # Edit the current message to inform the user
+            await query.edit_message_text("Отправляю файл политики обработки данных...")
+            
+            # Send the policy file as a document
+            await context.bot.send_document(
+                chat_id=user.id,
+                document=open(policy_path, 'rb'),
+                filename="Политика обработки данных.md",
+                caption="Политика обработки персональных данных"
+            )
+            logger.info(f"Policy document sent to user {user.username} (ID: {user.id})")
             
             # Show the consent options again in a new message
             reply_markup = get_consent_keyboard()
@@ -229,9 +234,9 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=reply_markup
             )
         except Exception as e:
-            logger.error(f"Error displaying policy to user {user.id}: {e}")
+            logger.error(f"Error sending policy to user {user.id}: {e}")
             await query.edit_message_text(
-                "Извините, произошла ошибка при загрузке политики. Пожалуйста, попробуйте позже."
+                "Извините, произошла ошибка при отправке политики. Пожалуйста, попробуйте позже."
             )
             
             # Re-display consent buttons
