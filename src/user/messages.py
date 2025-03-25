@@ -20,10 +20,10 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
                     logger.info(f"Bot mentioned in group chat by {update.message.from_user.username}")
                     # Reply only when mentioned
                     await update.message.reply_text(
-                        f'@{update.message.from_user.username}, для внесения статистики и просмотра результатов, '
-                        'пожалуйста, общайтесь со мной напрямую, чтобы не засорять общий чат.'
+                        f'@{update.message.from_user.username}, спасибо большое за интерес! 😊 '
+                        'Пожалуйста, напишите мне в личные сообщения, чтобы внести статистику и посмотреть результаты — '
+                        'так мы сможем сохранить порядок в общем чате 🙏'
                     )
-            
             # Always return True for group messages to prevent further processing
             return True
     except Exception as e:
