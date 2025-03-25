@@ -14,18 +14,28 @@ This project is a Telegram bot designed for participants of a shooting group to 
 
 ```
 shooting-score-tracker
-├── src
-│   ├── main.py          # Entry point of the bot application
-│   ├── database.py      # Database operations for user results
-│   ├── scheduler.py     # Scheduling tasks for leaderboard publication
-│   ├── utils.py         # Utility functions for input validation and message formatting
-│   └── config.py        # Configuration settings for the bot
-├── data
-│   └── bot_database.sqlite # SQLite database for storing user results
-├── requirements.txt      # List of dependencies
-├── .env.example          # Template for environment variables
-├── .gitignore            # Files and directories to ignore by Git
-└── README.md             # Documentation for the project
+├── data                       # Directory for storing database files
+│   ├── consent.db             # Database storing user consent information
+│   └── scoreboard.db          # Database storing shooting scores and leaderboard data
+├── docker-compose.yml         # Configuration for Docker Compose deployment
+├── Dockerfile                 # Instructions for building the Docker image
+├── policy.pdf                 # PDF document containing the usage policy
+├── README.md                  # Project documentation
+├── requirements.txt           # Python dependencies
+└── src                        # Source code directory
+    ├── config.py              # Application configuration settings
+    ├── database               # Database-related code
+    │   ├── consent_db.py      # Database operations for user consent
+    │   ├── __init__.py        # Makes the directory a Python package
+    │   └── results_db.py      # Database operations for shooting results
+    ├── main.py                # Application entry point
+    ├── publish_leaderboard.py # Script to publish the leaderboard
+    └── user                   # User-related functionality
+        ├── consent.py         # Handling user consent logic
+        ├── __init__.py        # Makes the directory a Python package
+        ├── leaderboard.py     # Leaderboard generation and management
+        ├── membership.py      # Group membership verification
+        └── messages.py        # Message handling and formatting
 ```
 
 ## Setup Instructions
@@ -49,7 +59,11 @@ shooting-score-tracker
 
 4. Create a `.env` file based on the `.env.example` template and add your Telegram bot token.
 
-5. Run the bot:
+5. Ensure that a `policy.pdf` file exists in the project directory. This file is required for the Docker build to complete successfully.
+
+6. Users must read and agree to the policy before they can use the bot. The bot will prompt new users to review and accept the terms outlined in the policy document.
+
+7. Run the bot:
    ```
    python src/main.py
    ```

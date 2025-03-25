@@ -40,6 +40,7 @@ COPY --from=build /usr/local/bin /usr/local/bin
 # Copy application code directly to /app
 COPY src/. /app/
 COPY README.md /app/
+COPY policy.pdf /app/
 
 # Set correct ownership after all files are copied
 RUN chown -R appuser:appgroup /app

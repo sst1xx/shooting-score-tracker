@@ -10,7 +10,6 @@ load_dotenv()
 # Bot configuration
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-DATABASE_PATH = os.getenv("DATABASE_PATH", "data/bot_database.sqlite")
 
 # Ensure critical values are set
 if not BOT_TOKEN:
