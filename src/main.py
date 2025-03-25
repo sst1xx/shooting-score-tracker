@@ -53,11 +53,6 @@ logger = logging.getLogger(__name__)
 
 # Constants
 CONSENT_DB = os.path.join('data', 'consent.db')
-WELCOME_MESSAGE = (
-    "Ну что, стрелок, рад тебя видеть! 😊\n"
-    "Прицелился? Дыхание ровное? Тогда поехали — покажем красивую стрельбу! 💪🎯"
-)
-
 
 # Help text constant to avoid duplication
 HELP_TEXT = (
@@ -92,7 +87,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Check consent first
     if check_user_consent(user.id):
         logger.info(f"User {user.username} (ID: {user.id}) already gave consent, proceeding")
-        await update.message.reply_text(f"С возвращением, {user.first_name}! 👋\nТы уже дал согласие на обработку персональных данных, можем продолжать.")
+        await update.message.reply_text(f"С возвращением, {user.first_name}! 👋\nСогласие на обработку персональных данных уже получено — первый выстрел сделан. Можем продолжать.")
         
         # Check group membership
         user_id = update.message.from_user.id
@@ -102,7 +97,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await update.message.reply_text(f'Для использования бота необходимо быть участником группы. {error_message}')
             return
             
-        await update.message.reply_text(WELCOME_MESSAGE)
         await help_command(update, context)
         return
 
@@ -114,7 +108,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "Прежде чем выйти на рубеж — один важный шаг. Ознакомься с пользовательским соглашением.\n"
         "Мы сохраняем результаты твоей стрельбы — только по минимуму и исключительно ради честной статистики. 📊🔐\n\n"
         "Нажимая кнопку ниже, ты подтверждаешь своё согласие с условиями.\n"
-        "С этого момента — ты в игре. Внимание... Готовность... Начали! 💥🎯"
+        "С этого момента — ты в игре. Заряжай... Старт! 💥🎯"
             )
 
     await update.message.reply_text(text, reply_markup=reply_markup)
@@ -148,10 +142,6 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     text=f'Для использования бота необходимо быть участником группы. {error_message}'
                 )
             else:
-                await context.bot.send_message(
-                    chat_id=user.id,
-                    text=WELCOME_MESSAGE
-                )
                 # Send help message using the constant
                 await context.bot.send_message(chat_id=user.id, text=HELP_TEXT)
         else:
@@ -394,12 +384,13 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                (previous_group == "Продвинутые" and new_group == "Профи"):
                 # Send congratulation message
                 await update.message.reply_text(
-                    f'🎉 Поздравляем! 🎉\n'
-                    f'Вы улучшили свой результат и перешли в группу "{new_group}"!\n'
-                    f'Ваш новый результат: {best_series}, {total_tens}.'
+                    f'🏆 Отличная серия, {update.effective_user.first_name}! 🏆\n'
+                    f'Ты поднялся на новый уровень и теперь в группе **"{new_group}"**!\n'
+                    f'Твой результат: {best_series}, {total_tens} — уверенное попадание в прогресс! 🎯'
                 )
                 return
-        
+
+
         # Regular success message if no group change
         await update.message.reply_text('Ваши результаты были записаны!')
     else:
@@ -426,14 +417,14 @@ async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_
             
         # Welcome message with instructions
         welcome_text = (
-            f"Добро пожаловать, {new_member.first_name}! 👋\n\n"
-            f"Я бот для ведения результатов стрельбы. Для внесения своих результатов "
-            f"и просмотра таблицы лидеров, пожалуйста, напишите мне в личные сообщения "
-            f"@{context.bot.username}.\n\n"
-            f"Чтобы внести результаты, отправьте в личном чате @{context.bot.username} два числа в формате:\n"
-            f"Серия КоличествоДесяток(центровых, если серия >=93)\n"
-            f"Например: 92 3"
+            f"Добро пожаловать в команду, {new_member.first_name}! 🏅\n\n"
+            f"Я — твой помощник в пути к стрелковым вершинам. Чтобы внести результаты "
+            f"и следить за таблицей лидеров, напиши мне в личку @{context.bot.username}.\n\n"
+            f"Формат ввода: Серия и Количество десяток (центровых, если серия ≥93).\n"
+            f"Пример: 92 3\n\n"
+            f"Вперёд к точным выстрелам и высоким результатам! 🎯"
         )
+
         
         await update.message.reply_text(welcome_text)
         logger.info(f"Welcomed new member {new_member.first_name} to the group")
