@@ -45,9 +45,6 @@ COPY policy.pdf /app/
 # Set correct ownership after all files are copied
 RUN chown -R appuser:appgroup /app
 
-# Create the data volume with the correct path
-VOLUME ["/app/data"]
-
 # Change to non-root user
 USER appuser
 
