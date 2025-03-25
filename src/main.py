@@ -169,7 +169,7 @@ async def handle_consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await context.bot.send_document(
                 chat_id=user.id,
                 document=open(policy_path, 'rb'),
-                filename="Политика обработки данных.md",
+                filename="Политика обработки данных.pdf",
                 caption="Политика обработки персональных данных"
             )
             logger.info(f"Policy document sent to user {user.username} (ID: {user.id})")
