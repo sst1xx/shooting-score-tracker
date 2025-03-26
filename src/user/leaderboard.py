@@ -58,9 +58,9 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             best_series = result[2]
             total_tens = result[3]
             if user_group == "Профи":
-                leaderboard_text += f"{i}. {username}: {best_series, total_tens}x\n"
+                leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}x\n"
             else:
-                leaderboard_text += f"{i}. {username}: {best_series, total_tens}\n"
+                leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}\n"
     
     await update.message.reply_text(leaderboard_text)
 
@@ -97,7 +97,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             username = result[1]
             best_series = result[2]
             total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series, total_tens}x\n"
+            leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}x\n"
         leaderboard_text += "\n"
     
     # Semi-pro group
@@ -109,7 +109,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             username = result[1]
             best_series = result[2]
             total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series, total_tens}\n"
+            leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}\n"
         leaderboard_text += "\n"
     
     # Amateur group
@@ -121,6 +121,6 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             username = result[1]
             best_series = result[2]
             total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series, total_tens}\n"
+            leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}\n"
     
     await update.message.reply_text(leaderboard_text)

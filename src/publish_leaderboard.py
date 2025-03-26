@@ -93,7 +93,7 @@ async def publish_leaderboard():
         else:
             for i, result in enumerate(pro_sorted, 1):
                 _, username, best_series, total_tens, *_ = result
-                message += f"{i}. {username}: {best_series, total_tens}x\n"
+                message += f"{i}. {username}: {best_series}-{total_tens}x\n"
             message += "\n"
         
         # Semi-pro group
@@ -103,7 +103,7 @@ async def publish_leaderboard():
         else:
             for i, result in enumerate(semi_pro_sorted, 1):
                 _, username, best_series, total_tens, *_ = result
-                message += f"{i}. {username}: {best_series, total_tens}\n"
+                message += f"{i}. {username}: {best_series}-{total_tens}\n"
             message += "\n"
         
         # Amateur group
@@ -113,7 +113,7 @@ async def publish_leaderboard():
         else:
             for i, result in enumerate(amateur_sorted, 1):
                 _, username, best_series, total_tens, *_ = result
-                message += f"{i}. {username}: {best_series, total_tens}\n"
+                message += f"{i}. {username}: {best_series}-{total_tens}\n"
             
         # Add congratulatory message at the end
         message += "\n🎉 Поздравляем победителей! Новый сезон начат. Вперед за новыми рекордами!"
