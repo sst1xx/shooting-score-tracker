@@ -3,7 +3,7 @@
 import logging
 from telegram import Update
 from telegram.ext import ContextTypes
-from database import get_all_results, get_user_result
+from database import get_all_results, get_user_result, format_display_name
 from .messages import handle_group_message  # Import from the same package
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     # Determine user's group
     user_group = "Любители"  # Default group if user has no results
     if user_result:
-        best_series = user_result[2]
+        best_series = user_result[4]  # Updated index for best_series
         if best_series >= 93:
             user_group = "Профи"
         elif best_series >= 80:
@@ -35,17 +35,17 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     
     # Filter results based on user's group
     if user_group == "Профи":
-        filtered_results = [r for r in results if r[2] >= 93]
+        filtered_results = [r for r in results if r[4] >= 93]  # Updated index for best_series
         group_title = "🏆 Группа Профи 🏆"
     elif user_group == "Продвинутые":
-        filtered_results = [r for r in results if 80 <= r[2] <= 92]
+        filtered_results = [r for r in results if 80 <= r[4] <= 92]  # Updated index for best_series
         group_title = "🏆 Группа Продвинутые 🏆"
     else:  # Любители
-        filtered_results = [r for r in results if r[2] <= 79]
+        filtered_results = [r for r in results if r[4] <= 79]  # Updated index for best_series
         group_title = "🏆 Группа Любители 🏆"
     
     # Sort results by best_series (descending) and then by total_tens (descending)
-    sorted_results = sorted(filtered_results, key=lambda x: (x[2], x[3]), reverse=True)
+    sorted_results = sorted(filtered_results, key=lambda x: (x[4], x[5]), reverse=True)  # Updated indexes
     
     # Format the leaderboard message
     leaderboard_text = f"{group_title}\n\n"
@@ -53,8 +53,12 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not sorted_results:
         leaderboard_text += "В этой группе пока нет результатов."
     else:
-        for i, (_, full_name, best_series, total_tens) in enumerate(sorted_results[:50], 1):  # Show top 50 results
-            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
+        for i, result in enumerate(sorted_results[:50], 1):  # Show top 50 results
+            # Unpack new result format
+            _, first_name, last_name, _, best_series, total_tens = result
+            display_name = format_display_name(first_name, last_name)
+            
+            name_display = display_name[:20] + "..." if len(display_name) > 20 else display_name
             if user_group == "Профи":
                 leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}x\n"
             else:
@@ -74,14 +78,14 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     
     # Filter results into three groups
-    pro_results = [r for r in results if r[2] >= 93]
-    semi_pro_results = [r for r in results if 80 <= r[2] < 93]
-    amateur_results = [r for r in results if r[2] < 80]
+    pro_results = [r for r in results if r[4] >= 93]  # Updated index for best_series
+    semi_pro_results = [r for r in results if 80 <= r[4] < 93]  # Updated index for best_series
+    amateur_results = [r for r in results if r[4] < 80]  # Updated index for best_series
     
     # Sort each group by best_series and total_tens
-    pro_sorted = sorted(pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
-    semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
-    amateur_sorted = sorted(amateur_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
+    pro_sorted = sorted(pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
+    semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
+    amateur_sorted = sorted(amateur_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
     
     # Format the message
     leaderboard_text = "🏆 Таблица лидеров по всем группам 🏆\n\n"
@@ -91,8 +95,12 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not pro_sorted:
         leaderboard_text += "В этой группе пока нет результатов.\n\n"
     else:
-        for i, (_, full_name, best_series, total_tens) in enumerate(pro_sorted, 1):
-            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
+        for i, result in enumerate(pro_sorted, 1):
+            # Unpack new result format
+            _, first_name, last_name, _, best_series, total_tens = result
+            display_name = format_display_name(first_name, last_name)
+            
+            name_display = display_name[:20] + "..." if len(display_name) > 20 else display_name
             leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}x\n"
         leaderboard_text += "\n"
     
@@ -101,8 +109,12 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not semi_pro_sorted:
         leaderboard_text += "В этой группе пока нет результатов.\n\n"
     else:
-        for i, (_, full_name, best_series, total_tens) in enumerate(semi_pro_sorted, 1):
-            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
+        for i, result in enumerate(semi_pro_sorted, 1):
+            # Unpack new result format
+            _, first_name, last_name, _, best_series, total_tens = result
+            display_name = format_display_name(first_name, last_name)
+            
+            name_display = display_name[:20] + "..." if len(display_name) > 20 else display_name
             leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}\n"
         leaderboard_text += "\n"
     
@@ -111,8 +123,12 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not amateur_sorted:
         leaderboard_text += "В этой группе пока нет результатов.\n\n"
     else:
-        for i, (_, full_name, best_series, total_tens) in enumerate(amateur_sorted, 1):
-            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
+        for i, result in enumerate(amateur_sorted, 1):
+            # Unpack new result format
+            _, first_name, last_name, _, best_series, total_tens = result
+            display_name = format_display_name(first_name, last_name)
+            
+            name_display = display_name[:20] + "..." if len(display_name) > 20 else display_name
             leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}\n"
     
     await update.message.reply_text(leaderboard_text)

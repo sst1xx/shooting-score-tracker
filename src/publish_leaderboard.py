@@ -1,15 +1,11 @@
 import logging
 import os
-import sys
 import asyncio
 import re
 from telegram import Bot
 from telegram.error import TelegramError
-from database import get_all_results, create_database
+from database import get_all_results, create_database, format_display_name
 from config import BOT_TOKEN, CHAT_ID, DB_PATH
-
-# Add parent directory to path to ensure imports work properly
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Configure logging
 logging.basicConfig(
@@ -56,14 +52,14 @@ async def publish_leaderboard():
             return  # Early return - don't send any messages
         
         # Filter results into three groups
-        pro_results = [r for r in results if r[2] >= 93]
-        semi_pro_results = [r for r in results if 80 <= r[2] <= 92]
-        amateur_results = [r for r in results if r[2] <= 79]
+        pro_results = [r for r in results if r[4] >= 93]  # Updated index for best_series
+        semi_pro_results = [r for r in results if 80 <= r[4] <= 92]  # Updated index for best_series
+        amateur_results = [r for r in results if r[4] <= 79]  # Updated index for best_series
         
         # Sort each group by best_series and total_tens
-        pro_sorted = sorted(pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
-        semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
-        amateur_sorted = sorted(amateur_results, key=lambda x: (x[2], x[3]), reverse=True)[:10]
+        pro_sorted = sorted(pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
+        semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
+        amateur_sorted = sorted(amateur_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
         
         # Create message
         message = "🏅 Наши победители 🏅\n\n"
@@ -73,14 +69,20 @@ async def publish_leaderboard():
             message += "Пока нет участников ни в одной группе.\n"
         else:
             if pro_sorted:
-                _, winner_pro, score_pro, tens_pro, *_ = pro_sorted[0]
-                message += f"👑 Профи: {winner_pro} {score_pro}-{tens_pro}x\n"
+                _, first_name, last_name, username, score, tens = pro_sorted[0]
+                winner = format_display_name(first_name, last_name)
+                username_display = f" (@{username})" if username else ""
+                message += f"👑 Профи: {winner}{username_display} {score}-{tens}x\n"
             if semi_pro_sorted:
-                _, winner_semi, score_semi, tens_semi, *_ = semi_pro_sorted[0]
-                message += f"🥈 Продвинутые: {winner_semi} {score_semi}-{tens_semi}\n"
+                _, first_name, last_name, username, score, tens = semi_pro_sorted[0]
+                winner = format_display_name(first_name, last_name)
+                username_display = f" (@{username})" if username else ""
+                message += f"🥈 Продвинутые: {winner}{username_display} {score}-{tens}\n"
             if amateur_sorted:
-                _, winner_am, score_am, tens_am, *_ = amateur_sorted[0]
-                message += f"🥉 Любители: {winner_am} {score_am}-{tens_am}\n"
+                _, first_name, last_name, username, score, tens = amateur_sorted[0]
+                winner = format_display_name(first_name, last_name)
+                username_display = f" (@{username})" if username else ""
+                message += f"🥉 Любители: {winner}{username_display} {score}-{tens}\n"
         
         # Now show the detailed leaderboard tables
         message += "\n📊 Подробная таблица 📊\n\n"
@@ -91,8 +93,9 @@ async def publish_leaderboard():
             message += "В этой группе пока нет результатов.\n\n"
         else:
             for i, result in enumerate(pro_sorted, 1):
-                _, username, best_series, total_tens, *_ = result
-                message += f"{i}. {username}: {best_series}-{total_tens}x\n"
+                _, first_name, last_name, _, best_series, total_tens = result
+                display_name = format_display_name(first_name, last_name)
+                message += f"{i}. {display_name}: {best_series}-{total_tens}x\n"
             message += "\n"
         
         # Semi-pro group
@@ -101,8 +104,9 @@ async def publish_leaderboard():
             message += "В этой группе пока нет результатов.\n\n"
         else:
             for i, result in enumerate(semi_pro_sorted, 1):
-                _, username, best_series, total_tens, *_ = result
-                message += f"{i}. {username}: {best_series}-{total_tens}\n"
+                _, first_name, last_name, _, best_series, total_tens = result
+                display_name = format_display_name(first_name, last_name)
+                message += f"{i}. {display_name}: {best_series}-{total_tens}\n"
             message += "\n"
         
         # Amateur group
@@ -111,8 +115,9 @@ async def publish_leaderboard():
             message += "В этой группе пока нет результатов.\n\n"
         else:
             for i, result in enumerate(amateur_sorted, 1):
-                _, username, best_series, total_tens, *_ = result
-                message += f"{i}. {username}: {best_series}-{total_tens}\n"
+                _, first_name, last_name, _, best_series, total_tens = result
+                display_name = format_display_name(first_name, last_name)
+                message += f"{i}. {display_name}: {best_series}-{total_tens}\n"
             
         # Add congratulatory message at the end
         message += "\n🎉 Поздравляем победителей! Новый сезон начат. Вперед за новыми рекордами!"

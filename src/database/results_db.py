@@ -19,20 +19,13 @@ def create_tables():
     conn = create_connection()
     cursor = conn.cursor()
     
-    # Create bot_data table if it doesn't exist
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS bot_data (
-        id INTEGER PRIMARY KEY,
-        key TEXT,
-        value TEXT
-    )
-    ''')
-    
     # Create user_results table if it doesn't exist
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS user_results (
         user_id INTEGER PRIMARY KEY,
-        full_name TEXT,
+        first_name TEXT,
+        last_name TEXT,
+        username TEXT,
         best_series INTEGER,
         total_tens INTEGER,
         photo_id TEXT NULL,
@@ -48,21 +41,30 @@ def create_database():
     create_tables()
     logger.info("Results database initialized")
 
-def add_user_result(user_id, full_name, best_series, total_tens, photo_id=None):
+def format_display_name(first_name, last_name):
+    """Format a display name using first_name and last_name (username excluded)."""
+    display_name = first_name
+    if last_name:
+        display_name += f" {last_name}"
+    return display_name
+
+def add_user_result(user_id, first_name, last_name, username, best_series, total_tens, photo_id=None):
     """Add or update a user's shooting results."""
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO user_results (user_id, full_name, best_series, total_tens, photo_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO user_results (user_id, first_name, last_name, username, best_series, total_tens, photo_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
-            full_name = excluded.full_name,
+            first_name = excluded.first_name,
+            last_name = excluded.last_name,
+            username = excluded.username,
             best_series = excluded.best_series,
             total_tens = excluded.total_tens,
             photo_id = excluded.photo_id
         WHERE excluded.best_series > user_results.best_series
            OR (excluded.best_series = user_results.best_series AND excluded.total_tens > user_results.total_tens)
-    ''', (user_id, full_name, best_series, total_tens, photo_id))
+    ''', (user_id, first_name, last_name, username, best_series, total_tens, photo_id))
     conn.commit()
     conn.close()
 
@@ -71,7 +73,7 @@ def get_user_result(user_id):
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT user_id, full_name, best_series, total_tens, photo_id FROM user_results 
+        SELECT user_id, first_name, last_name, username, best_series, total_tens, photo_id FROM user_results 
         WHERE user_id = ?
     ''', (user_id,))
     result = cursor.fetchone()
@@ -90,7 +92,7 @@ def get_all_results():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT user_id, full_name, best_series, total_tens FROM user_results 
+        SELECT user_id, first_name, last_name, username, best_series, total_tens FROM user_results 
         ORDER BY best_series DESC, total_tens DESC
     ''')
     results = cursor.fetchall()

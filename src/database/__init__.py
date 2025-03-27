@@ -12,7 +12,8 @@ from .results_db import (
     add_user_result,
     get_user_result,
     validate_input,
-    get_all_results
+    get_all_results,
+    format_display_name  # Import from results_db.py instead of defining here
 )
 
 # Export all functions
@@ -25,5 +26,6 @@ __all__ = [
     'add_user_result',
     'get_user_result',
     'validate_input',
-    'get_all_results'
+    'get_all_results',
+    'format_display_name'
 ]

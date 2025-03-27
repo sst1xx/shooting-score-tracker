@@ -342,8 +342,8 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         
         # Determine previous group if there was a previous result
         if previous_result:
-            prev_best_series = previous_result[2]
-            prev_total_tens = previous_result[3]
+            prev_best_series = previous_result[4]  # Updated index for best_series
+            prev_total_tens = previous_result[5]   # Updated index for total_tens
             
             # Determine the previous group
             if prev_best_series >= 93:
@@ -361,18 +361,17 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 )
                 return
 
-        # Save the new result
-        full_name = update.message.from_user.first_name
-        if update.message.from_user.last_name:
-            full_name += f" {update.message.from_user.last_name}"
-        
-        # Add username if available
-        if update.message.from_user.username:
-            full_name += f" (@{update.message.from_user.username})"
+        # Get user details from Telegram
+        first_name = update.message.from_user.first_name
+        last_name = update.message.from_user.last_name or ""
+        username = update.message.from_user.username or ""
 
+        # Save the new result with separated user fields
         add_user_result(
             user_id,
-            full_name,
+            first_name,
+            last_name,
+            username,
             best_series,
             total_tens
         )
@@ -398,7 +397,6 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     f'Твой результат: {best_series}, {total_tens} — уверенное попадание в прогресс! 🎯'
                 )
                 return
-
 
         # Regular success message if no group change
         await update.message.reply_text('Есть! Вот это выстрел… Душа радуется. ❤️‍🔥🎯')

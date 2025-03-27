@@ -1,11 +1,11 @@
 import os
 import logging
-from typing import List, Tuple, Optional
+from typing import List
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 
-from database import add_user_result, get_user_result, create_database
+from database import add_user_result, get_user_result, format_display_name
 from config import DB_PATH
 import sqlite3
 
@@ -51,12 +51,13 @@ async def handle_admin_command(update: Update, context: ContextTypes.DEFAULT_TYP
     
     if not is_admin(user_id):
         await update.message.reply_text("У вас нет прав администратора.")
+        logger.warning(f"User {user_id} attempted to access admin panel without permission")
         return
     
     keyboard = [
+        [InlineKeyboardButton("📋 Список всех пользователей", callback_data='admin_list_users')],
         [InlineKeyboardButton("🔄 Изменить результат пользователя", callback_data='admin_modify')],
-        [InlineKeyboardButton("🗑️ Удалить пользователя", callback_data='admin_delete')],
-        [InlineKeyboardButton("📋 Список всех пользователей", callback_data='admin_list_users')]
+        [InlineKeyboardButton("🗑️ Удалить пользователя", callback_data='admin_delete')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -64,6 +65,7 @@ async def handle_admin_command(update: Update, context: ContextTypes.DEFAULT_TYP
         "Панель администратора. Выберите действие:",
         reply_markup=reply_markup
     )
+    logger.info(f"Admin {user_id} accessed admin panel")
 
 async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle admin panel callback queries."""
@@ -77,6 +79,7 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
     
     if not is_admin(user_id):
         await query.answer("У вас нет прав администратора.")
+        logger.warning(f"User {user_id} attempted to use admin callback without permission")
         return
     
     await query.answer()
@@ -87,6 +90,7 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "/modify_user <user_id> <best_series> <total_tens>\n\n"
             "Например: /modify_user 123456789 95 6"
         )
+        logger.info(f"Admin {user_id} selected modify user option")
     
     elif query.data == 'admin_delete':
         await query.edit_message_text(
@@ -94,9 +98,11 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "/delete_user <user_id>\n\n"
             "Например: /delete_user 123456789"
         )
+        logger.info(f"Admin {user_id} selected delete user option")
     
     elif query.data == 'admin_list_users':
         # List all users in the database
+        logger.info(f"Admin {user_id} requested list of all users")
         try:
             # Check if the database file exists
             if not os.path.exists(DB_PATH):
@@ -118,8 +124,8 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 conn.close()
                 return
             
-            # Get all users
-            cursor.execute("SELECT user_id, full_name, best_series, total_tens FROM user_results ORDER BY best_series DESC, total_tens DESC")
+            # Get all users - use first_name and last_name instead of full_name
+            cursor.execute("SELECT user_id, first_name, last_name, username, best_series, total_tens FROM user_results ORDER BY best_series DESC, total_tens DESC")
             users = cursor.fetchall()
             conn.close()
             
@@ -129,8 +135,9 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 
             # Format list of users
             users_text = "📋 Список всех пользователей:\n\n"
-            for i, (uid, name, series, tens) in enumerate(users, 1):
-                users_text += f"{i}. {name} (ID: {uid}) - Серия: {series}, Десятки: {tens}\n"
+            for i, (uid, first_name, last_name, username, series, tens) in enumerate(users, 1):
+                display_name = format_display_name(first_name, last_name)
+                users_text += f"{i}. {display_name} {f'@{username}' if username else ''} (ID: {uid}) - Серия: {series}, Десятки: {tens}\n"
                 
                 # Telegram has a message length limit, split into multiple messages if needed
                 if i % 40 == 0 and i < len(users):
@@ -196,12 +203,21 @@ async def modify_user_result(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await send_response(update, f"Пользователь с ID {target_user_id} не найден в базе данных.")
             return
         
-        # Update the user's result
-        full_name = user_data[1]  # Get username from existing record
-        add_user_result(target_user_id, full_name, best_series, total_tens)
+        # Update the user's result using the correct fields
+        # user_data contains: (user_id, first_name, last_name, username, best_series, total_tens, photo_id)
+        first_name = user_data[1]
+        last_name = user_data[2]
+        username = user_data[3]
+        display_name = format_display_name(first_name, last_name)
+        
+        # Keep the photo_id from the existing record
+        photo_id = user_data[6]
+        
+        # Update user with all the required parameters
+        add_user_result(target_user_id, first_name, last_name, username, best_series, total_tens, photo_id)
         
         await send_response(update,
-            f"Результат пользователя {full_name} (ID: {target_user_id}) обновлен:\n"
+            f"Результат пользователя {display_name} (ID: {target_user_id}) обновлен:\n"
             f"Серия: {best_series}, Десятки: {total_tens}"
         )
         
@@ -243,18 +259,32 @@ async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             await send_response(update, f"Пользователь с ID {target_user_id} не найден в базе данных.")
             return
         
-        full_name = user_data[1]
+        # Format the name correctly from first_name and last_name
+        first_name = user_data[1]
+        last_name = user_data[2]
+        username = user_data[3]
+        display_name = format_display_name(first_name, last_name)
         
         # Connect to the database using the centralized path
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        cursor.execute("DELETE FROM user_results WHERE user_id = ?", (target_user_id,))
-        conn.commit()
-        conn.close()
+        # Begin transaction to ensure data integrity during multiple operations
+        conn.execute("BEGIN TRANSACTION")
+        try:
+            # Delete from user_results table only, as user_sessions doesn't exist in schema
+            cursor.execute("DELETE FROM user_results WHERE user_id = ?", (target_user_id,))
+            # Commit the transaction
+            conn.commit()
+        except Exception as e:
+            # If any error occurs, rollback the transaction
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
         
         await send_response(update,
-            f"Пользователь {full_name} (ID: {target_user_id}) удален из базы данных."
+            f"Пользователь {display_name} (ID: {target_user_id}) удален из базы данных."
         )
         
         logger.info(f"Admin {update.effective_user.id} deleted user {target_user_id} from database")
