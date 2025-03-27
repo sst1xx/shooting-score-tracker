@@ -11,6 +11,11 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+# Database configuration
+DATA_DIR = os.environ.get('DATA_DIR', './data')
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, 'scoreboard.db')
+
 # Ensure critical values are set
 if not BOT_TOKEN:
     logging.critical("BOT_TOKEN not found in environment variables!")

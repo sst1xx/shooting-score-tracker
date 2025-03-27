@@ -26,6 +26,16 @@ from .messages import handle_group_message
 # Import the leaderboard functions
 from .leaderboard import leaderboard, leaderboard_all
 
+# Import and expose admin functionality
+from .admin import (
+    is_admin,
+    handle_admin_command,
+    handle_admin_callback,
+    modify_user_result,
+    delete_user,
+    register_admin_handlers
+)
+
 # Export all functions to maintain the same API
 __all__ = [
     'init_consent_db',
@@ -39,5 +49,11 @@ __all__ = [
     '_extract_new_group_id',
     'handle_group_message',
     'leaderboard',
-    'leaderboard_all'
+    'leaderboard_all',
+    'is_admin',
+    'handle_admin_command',
+    'handle_admin_callback',
+    'modify_user_result',
+    'delete_user',
+    'register_admin_handlers'
 ]

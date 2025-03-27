@@ -53,14 +53,12 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not sorted_results:
         leaderboard_text += "В этой группе пока нет результатов."
     else:
-        for i, result in enumerate(sorted_results[:10], 1):  # Show top 10 results
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
+        for i, (_, full_name, best_series, total_tens) in enumerate(sorted_results[:50], 1):  # Show top 50 results
+            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
             if user_group == "Профи":
-                leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}x\n"
+                leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}x\n"
             else:
-                leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}\n"
+                leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}\n"
     
     await update.message.reply_text(leaderboard_text)
 
@@ -93,11 +91,9 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not pro_sorted:
         leaderboard_text += "В этой группе пока нет результатов.\n\n"
     else:
-        for i, result in enumerate(pro_sorted, 1):
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}x\n"
+        for i, (_, full_name, best_series, total_tens) in enumerate(pro_sorted, 1):
+            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
+            leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}x\n"
         leaderboard_text += "\n"
     
     # Semi-pro group
@@ -105,11 +101,9 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not semi_pro_sorted:
         leaderboard_text += "В этой группе пока нет результатов.\n\n"
     else:
-        for i, result in enumerate(semi_pro_sorted, 1):
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}\n"
+        for i, (_, full_name, best_series, total_tens) in enumerate(semi_pro_sorted, 1):
+            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
+            leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}\n"
         leaderboard_text += "\n"
     
     # Amateur group
@@ -117,10 +111,8 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not amateur_sorted:
         leaderboard_text += "В этой группе пока нет результатов.\n\n"
     else:
-        for i, result in enumerate(amateur_sorted, 1):
-            username = result[1]
-            best_series = result[2]
-            total_tens = result[3]
-            leaderboard_text += f"{i}. {username}: {best_series}-{total_tens}\n"
+        for i, (_, full_name, best_series, total_tens) in enumerate(amateur_sorted, 1):
+            name_display = full_name[:20] + "..." if len(full_name) > 20 else full_name
+            leaderboard_text += f"{i}. {name_display}: {best_series}-{total_tens}\n"
     
     await update.message.reply_text(leaderboard_text)

@@ -6,8 +6,7 @@ import re
 from telegram import Bot
 from telegram.error import TelegramError
 from database import get_all_results, create_database
-from database.results_db import DB_PATH  # Import the correct DB_PATH
-from config import BOT_TOKEN, CHAT_ID
+from config import BOT_TOKEN, CHAT_ID, DB_PATH
 
 # Add parent directory to path to ensure imports work properly
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -34,7 +33,7 @@ def parse_chat_ids(chat_id_config):
 def reset_database():
     """Delete the old database and create a new one."""
     try:
-        # Use the correct database path from the database module
+        # Use the centralized database path from config
         if os.path.exists(DB_PATH):
             os.remove(DB_PATH)
             logger.info(f"Old database deleted: {DB_PATH}")
@@ -75,13 +74,13 @@ async def publish_leaderboard():
         else:
             if pro_sorted:
                 _, winner_pro, score_pro, tens_pro, *_ = pro_sorted[0]
-                message += f"👑 Профи: {winner_pro} ({score_pro}, {tens_pro}x)\n"
+                message += f"👑 Профи: {winner_pro} {score_pro}-{tens_pro}x\n"
             if semi_pro_sorted:
                 _, winner_semi, score_semi, tens_semi, *_ = semi_pro_sorted[0]
-                message += f"🥈 Продвинутые: {winner_semi} ({score_semi}, {tens_semi})\n"
+                message += f"🥈 Продвинутые: {winner_semi} {score_semi}-{tens_semi}\n"
             if amateur_sorted:
                 _, winner_am, score_am, tens_am, *_ = amateur_sorted[0]
-                message += f"🥉 Любители: {winner_am} ({score_am}, {tens_am})\n"
+                message += f"🥉 Любители: {winner_am} {score_am}-{tens_am}\n"
         
         # Now show the detailed leaderboard tables
         message += "\n📊 Подробная таблица 📊\n\n"

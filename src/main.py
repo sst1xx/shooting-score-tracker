@@ -32,7 +32,9 @@ from user import (
     revoke_user_consent,
     handle_group_message,  # Updated to import from user module
     leaderboard,
-    leaderboard_all  # Import leaderboard functions from user package
+    leaderboard_all,  # Import leaderboard functions from user package
+    # Add these imports for admin functionality
+    register_admin_handlers
 )
 # Remove this import as it's now included in the user package
 # from leaderboard import leaderboard, leaderboard_all
@@ -363,8 +365,11 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         full_name = update.message.from_user.first_name
         if update.message.from_user.last_name:
             full_name += f" {update.message.from_user.last_name}"
+        
+        # Add username if available
+        if update.message.from_user.username:
+            full_name += f" (@{update.message.from_user.username})"
 
-# TODO: save @username
         add_user_result(
             user_id,
             full_name,
@@ -450,6 +455,9 @@ async def main() -> None:
     application.add_handler(CommandHandler("leaderboard_all", leaderboard_all))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("revoke", revoke_command))  # Add the revoke command handler
+    
+    # Register admin handlers
+    register_admin_handlers(application)
     
     # Add callback query handler for consent buttons
     application.add_handler(CallbackQueryHandler(handle_consent))
