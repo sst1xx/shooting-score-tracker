@@ -18,11 +18,23 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 bot_username = context.bot.username
                 if f"@{bot_username}" in update.message.text:
                     logger.info(f"Bot mentioned in group chat by {update.message.from_user.username}")
+                    
+                    # Use first name and last name if available, otherwise username
+                    user = update.message.from_user
+                    if user.first_name:
+                        if user.last_name:
+                            user_greeting = f"{user.first_name} {user.last_name}"
+                        else:
+                            user_greeting = user.first_name
+                    else:
+                        user_greeting = f"@{user.username}" if user.username else "Пользователь"
+                    
                     # Reply only when mentioned
                     await update.message.reply_text(
-                        f'@{update.message.from_user.username}, спасибо большое за интерес! 😊 '
+                        f'{user_greeting}, спасибо большое за интерес! 😊 '
                         'Пожалуйста, напишите мне в личные сообщения, чтобы внести статистику и посмотреть результаты — '
-                        'так мы сможем сохранить порядок в общем чате 🙏'
+                        'так мы сможем сохранить порядок в общем чате 🙏\n\n'
+                        f'С уважением @{bot_username}'
                     )
             # Always return True for group messages to prevent further processing
             return True
