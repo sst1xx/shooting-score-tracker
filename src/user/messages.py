@@ -32,10 +32,11 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
                     # Reply only when mentioned
                     await update.message.reply_text(
                         f'{user_greeting}, спасибо большое за интерес! 😊 '
-                        'Пожалуйста, напишите мне в личные сообщения, чтобы внести статистику и посмотреть результаты — '
-                        'так мы сможем сохранить порядок в общем чате 🙏\n\n'
-                        f'С уважением @{bot_username}'
+                        'Напишите, пожалуйста, в личку — так удобнее внести статистику и не засорять чат 🙏\n\n'
+                        f'С теплом, @{bot_username}'
                     )
+
+
             # Always return True for group messages to prevent further processing
             return True
     except Exception as e:
