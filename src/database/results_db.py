@@ -60,8 +60,6 @@ def add_user_result(user_id, first_name, last_name, username, best_series, total
             username = excluded.username,
             best_series = excluded.best_series,
             total_tens = excluded.total_tens
-        WHERE excluded.best_series > user_results.best_series
-           OR (excluded.best_series = user_results.best_series AND excluded.total_tens > user_results.total_tens)
     ''', (user_id, first_name, last_name, username, best_series, total_tens))
     conn.commit()
     conn.close()

@@ -464,7 +464,7 @@ async def main() -> None:
 
     # Set up bot commands for the menu button
     commands = [
-        BotCommand("start", "Начать использование бота"),
+        # BotCommand("start", "Начать использование бота"),  # Removed from menu
         BotCommand("status", "Проверить ваш текущий результат"),
         BotCommand("leaderboard", "Таблица лидеров вашей группы"),
         BotCommand("leaderboard_all", "Таблица лидеров всех групп"),
