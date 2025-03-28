@@ -204,17 +204,14 @@ async def modify_user_result(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return
         
         # Update the user's result using the correct fields
-        # user_data contains: (user_id, first_name, last_name, username, best_series, total_tens, photo_id)
+        # user_data contains: (user_id, first_name, last_name, username, best_series, total_tens)
         first_name = user_data[1]
         last_name = user_data[2]
         username = user_data[3]
         display_name = format_display_name(first_name, last_name)
         
-        # Keep the photo_id from the existing record
-        photo_id = user_data[6]
-        
         # Update user with all the required parameters
-        add_user_result(target_user_id, first_name, last_name, username, best_series, total_tens, photo_id)
+        add_user_result(target_user_id, first_name, last_name, username, best_series, total_tens)
         
         await send_response(update,
             f"Результат пользователя {display_name} (ID: {target_user_id}) обновлен:\n"

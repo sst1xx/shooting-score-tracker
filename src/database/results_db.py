@@ -28,7 +28,6 @@ def create_tables():
         username TEXT,
         best_series INTEGER,
         total_tens INTEGER,
-        photo_id TEXT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
@@ -48,23 +47,22 @@ def format_display_name(first_name, last_name):
         display_name += f" {last_name}"
     return display_name
 
-def add_user_result(user_id, first_name, last_name, username, best_series, total_tens, photo_id=None):
+def add_user_result(user_id, first_name, last_name, username, best_series, total_tens):
     """Add or update a user's shooting results."""
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO user_results (user_id, first_name, last_name, username, best_series, total_tens, photo_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO user_results (user_id, first_name, last_name, username, best_series, total_tens)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             first_name = excluded.first_name,
             last_name = excluded.last_name,
             username = excluded.username,
             best_series = excluded.best_series,
-            total_tens = excluded.total_tens,
-            photo_id = excluded.photo_id
+            total_tens = excluded.total_tens
         WHERE excluded.best_series > user_results.best_series
            OR (excluded.best_series = user_results.best_series AND excluded.total_tens > user_results.total_tens)
-    ''', (user_id, first_name, last_name, username, best_series, total_tens, photo_id))
+    ''', (user_id, first_name, last_name, username, best_series, total_tens))
     conn.commit()
     conn.close()
 
@@ -73,7 +71,7 @@ def get_user_result(user_id):
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT user_id, first_name, last_name, username, best_series, total_tens, photo_id FROM user_results 
+        SELECT user_id, first_name, last_name, username, best_series, total_tens FROM user_results 
         WHERE user_id = ?
     ''', (user_id,))
     result = cursor.fetchone()

@@ -1,10 +1,10 @@
 import asyncio
 import logging
 import os
-import sqlite3
-from datetime import datetime
+# Removed unused import: sqlite3
+# Removed unused import: datetime
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -16,12 +16,12 @@ from telegram.ext import (
 
 # Import from the refactored database package
 from database import (
-    init_consent_db,
+    # Removed duplicate import: init_consent_db
     create_database,
     add_user_result,
     get_user_result,
     validate_input,
-    get_all_results
+    # Removed unused import: get_all_results
 )
 # Import from the new user module
 from user import (
@@ -461,6 +461,20 @@ async def main() -> None:
 
     # Create the bot application
     application = Application.builder().token(BOT_TOKEN).build()
+
+    # Set up bot commands for the menu button
+    commands = [
+        BotCommand("start", "Начать использование бота"),
+        BotCommand("status", "Проверить ваш текущий результат"),
+        BotCommand("leaderboard", "Таблица лидеров вашей группы"),
+        BotCommand("leaderboard_all", "Таблица лидеров всех групп"),
+        BotCommand("revoke", "Отозвать согласие на обработку данных"),
+        BotCommand("help", "Показать список команд")
+    ]
+    
+    # Set commands in Telegram to show in the bot menu
+    await application.bot.set_my_commands(commands)
+    logger.info("Bot menu commands have been set up")
 
     # Register command handlers
     application.add_handler(CommandHandler("start", start_command))  # Use new consent-aware start handler
