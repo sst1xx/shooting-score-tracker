@@ -235,6 +235,22 @@ async def revoke_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         await update.message.reply_text("Произошла ошибка при отзыве согласия. Пожалуйста, попробуйте позже.")
 
+def extract_shooting_data(result):
+    """Extract best series and total tens from a result tuple.
+    
+    Args:
+        result: A tuple containing user shooting data
+        
+    Returns:
+        Tuple of (best_series, total_tens)
+    """
+    if not result:
+        return None, None
+    
+    best_series = result[4]
+    total_tens = result[5]
+    return best_series, total_tens
+
 # Update existing handlers to check for consent
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show a user's currently saved result."""
@@ -252,14 +268,14 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     
-    # Existing code continues...
+    # Get user result and extract data using the helper function
     result = get_user_result(user_id)
     if result:
-        # result is a tuple of (user_id, username, best_series, total_tens, photo_id)
-        if result[2] >= 93:
-            message = f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество центральных десяток: {result[3]}x"
+        best_series, total_tens = extract_shooting_data(result)
+        if best_series >= 93:
+            message = f"Ваш текущий результат:\nЛучшая серия: {best_series}, количество центральных десяток: {total_tens}x"
         else:
-            message = f"Ваш текущий результат:\nЛучшая серия: {result[2]}, количество десяток: {result[3]}"
+            message = f"Ваш текущий результат:\nЛучшая серия: {best_series}, количество десяток: {total_tens}"
         
         await update.message.reply_text(message)
     else:
