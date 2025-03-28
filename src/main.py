@@ -287,6 +287,11 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     Handle a text message from the user containing best_series and total_tens.
     Example input: "92 3"
     """
+    # First check if we have a valid message with a user
+    if not update.message or not update.message.from_user:
+        logger.warning("Received update without valid message or user information")
+        return
+        
     if await handle_group_message(update, context):
         return
         
