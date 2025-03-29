@@ -13,6 +13,8 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
+# Fix the incorrect import for command scopes
+from telegram import BotCommandScopeDefault, BotCommandScopeAllGroupChats
 
 # Import from the refactored database package
 from database import (
@@ -444,7 +446,7 @@ async def main() -> None:
     application = Application.builder().token(BOT_TOKEN).build()
 
     # Set up bot commands for the menu button
-    commands = [
+    private_commands = [
         # BotCommand("start", "Начать использование бота"),  # Removed from menu
         BotCommand("status", "Проверить ваш текущий результат"),
         BotCommand("leaderboard", "Таблица лидеров вашей группы"),
@@ -453,9 +455,19 @@ async def main() -> None:
         BotCommand("help", "Показать список команд")
     ]
     
-    # Set commands in Telegram to show in the bot menu
-    await application.bot.set_my_commands(commands)
-    logger.info("Bot menu commands have been set up")
+    # Set commands for private chats only
+    await application.bot.set_my_commands(
+        commands=private_commands,
+        scope=BotCommandScopeDefault()
+    )
+    
+    # Remove commands from group chats by setting an empty list
+    await application.bot.set_my_commands(
+        commands=[],  # empty command list
+        scope=BotCommandScopeAllGroupChats()
+    )
+    
+    logger.info("Bot menu commands have been set up for private chats only")
 
     # Register command handlers
     application.add_handler(CommandHandler("start", start_command))  # Use new consent-aware start handler
