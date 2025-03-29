@@ -74,6 +74,13 @@ HELP_TEXT = (
     "Например: 92 3"
 )
 
+# Consent required message to avoid duplication
+CONSENT_REQUIRED_TEXT = (
+    "Хочу убедиться, что всё по-честному и безопасно для тебя 😊 "
+    "Для отправки результатов нужно согласие на обработку данных. "
+    "Пожалуйста, нажми /start и прими условия соглашения, когда будешь готов. Я подожду 🤝"
+)
+
 def get_consent_keyboard():
     """Return the standard consent keyboard with three options."""
     keyboard = [
@@ -301,11 +308,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     
     # Check if user has given consent
     if not check_user_consent(user_id):
-        await update.message.reply_text(
-            "Хочу убедиться, что всё по-честному и безопасно для тебя 😊 "
-            "Для отправки результатов нужно согласие на обработку данных. "
-            "Пожалуйста, нажми /start и прими условия соглашения, когда будешь готов. Я подожду 🤝"
-        )
+        await update.message.reply_text(CONSENT_REQUIRED_TEXT)
         return
 
     # Validate user is in group
@@ -435,6 +438,24 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         
     await update.message.reply_text(HELP_TEXT)
 
+async def handle_unsupported_content(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle unsupported content types like photos, files or voice messages."""
+    if await handle_group_message(update, context):
+        return
+        
+    user_id = update.message.from_user.id
+    
+    # Check if user has given consent
+    if not check_user_consent(user_id):
+        await update.message.reply_text(CONSENT_REQUIRED_TEXT)
+        return
+        
+    await update.message.reply_text(
+        "Ой! Пока что я не умею работать с фото, файлами и голосовыми сообщениями 🙈\n"
+        "Но ничего, это временно — обязательно научусь!\n"
+        "А сейчас просто напиши результат в текстовом виде, например: 92 3 ✍️🙂"
+        )
+
 # Update the main function to initialize consent DB and add new handlers
 async def main() -> None:
     """Set up the database, configure the bot, add handlers, and run polling."""
@@ -483,8 +504,15 @@ async def main() -> None:
     # Add callback query handler for consent buttons
     application.add_handler(CallbackQueryHandler(handle_consent))
 
-    # Removed handler for new chat members to avoid spam
-
+    # Handle unsupported content types (photos, files, voice messages)
+    application.add_handler(
+# Вместо filters.MEDIA:
+        MessageHandler(
+            filters.ATTACHMENT | filters.CONTACT | filters.LOCATION,
+            handle_unsupported_content
+        )
+    )
+    
     # Register a message handler (for the best_series / total_tens input)
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_result)
