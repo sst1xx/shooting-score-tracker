@@ -433,30 +433,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         
     await update.message.reply_text(HELP_TEXT)
 
-async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Welcome new members to the group with instructions."""
-    if not update.message or not update.message.new_chat_members:
-        return
-        
-    for new_member in update.message.new_chat_members:
-        # Skip if the new member is the bot itself
-        if new_member.id == context.bot.id:
-            continue
-            
-        # Welcome message with instructions
-        welcome_text = (
-            f"Добро пожаловать в команду, {new_member.first_name}! 🏅\n\n"
-            f"Я — твой помощник в пути к стрелковым вершинам. Чтобы внести результаты "
-            f"и следить за таблицей лидеров, напиши мне в личку @{context.bot.username}.\n\n"
-            f"Формат ввода: Серия и Количество десяток (центровых, если серия ≥93).\n"
-            f"Пример: 92 3\n\n"
-            f"Вперёд к точным выстрелам и высоким результатам! 🎯"
-        )
-
-        
-        await update.message.reply_text(welcome_text)
-        logger.info(f"Welcomed new member {new_member.first_name} to the group")
-
 # Update the main function to initialize consent DB and add new handlers
 async def main() -> None:
     """Set up the database, configure the bot, add handlers, and run polling."""
@@ -495,8 +471,7 @@ async def main() -> None:
     # Add callback query handler for consent buttons
     application.add_handler(CallbackQueryHandler(handle_consent))
 
-    # Add handler for new chat members
-    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
+    # Removed handler for new chat members to avoid spam
 
     # Register a message handler (for the best_series / total_tens input)
     application.add_handler(
