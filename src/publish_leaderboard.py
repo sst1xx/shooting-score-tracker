@@ -51,6 +51,13 @@ async def publish_leaderboard():
             logger.info("No results found. Skipping leaderboard publication.")
             return  # Early return - don't send any messages
         
+        # Create bot instance
+        bot = Bot(token=BOT_TOKEN)
+        
+        # Get bot information to use the real username
+        bot_info = await bot.get_me()
+        bot_username = f"@{bot_info.username}" if bot_info.username else ""
+        
         # Filter results into three groups
         pro_results = [r for r in results if r[4] >= 93]  # Updated index for best_series
         semi_pro_results = [r for r in results if 80 <= r[4] <= 92]  # Updated index for best_series
@@ -120,7 +127,9 @@ async def publish_leaderboard():
                 message += f"{i}. {display_name}: {best_series}-{total_tens}\n"
             
         # Add congratulatory message at the end
-        message += "\n🎉 Поздравляем победителей! Новый сезон начат. Вперед за новыми рекордами!"
+        message += "\n✨ Друзья, вы — просто невероятные. Поздравляем от всего сердца! Столько тепла, старания и душевности в каждом шаге — гордимся вами до мурашек. 🧡 Новый сезон — как чистый лист, а вы уже держите в руках самые яркие краски. Пусть впереди будет только светлое и своё. 🌿\n"
+        message += f"\nОбнимаем мысленно и всегда рядом — ваш {bot_username} ☕️🧸"
+
 
         # Parse CHAT_ID to get multiple group IDs
         chat_ids = parse_chat_ids(CHAT_ID)
@@ -130,9 +139,6 @@ async def publish_leaderboard():
             return
             
         logger.info(f"Attempting to publish leaderboard to {len(chat_ids)} groups: {chat_ids}")
-        
-        # Create bot instance
-        bot = Bot(token=BOT_TOKEN)
         
         # Send message to each group
         success_count = 0
