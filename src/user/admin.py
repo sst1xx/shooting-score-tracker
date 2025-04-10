@@ -9,6 +9,9 @@ from database import add_user_result, get_user_result, format_display_name
 from config import DB_PATH
 import sqlite3
 
+# Constants for the consent database
+CONSENT_DB = os.path.join(os.environ.get('DATA_DIR', './data'), 'consent.db')
+
 # Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -57,7 +60,8 @@ async def handle_admin_command(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard = [
         [InlineKeyboardButton("📋 Список всех пользователей", callback_data='admin_list_users')],
         [InlineKeyboardButton("🔄 Изменить результат пользователя", callback_data='admin_modify')],
-        [InlineKeyboardButton("🗑️ Удалить пользователя", callback_data='admin_delete')]
+        [InlineKeyboardButton("🗑️ Удалить пользователя", callback_data='admin_delete')],
+        [InlineKeyboardButton("👶 Изменить статус ребенка", callback_data='admin_child_status')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -100,6 +104,15 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
         )
         logger.info(f"Admin {user_id} selected delete user option")
     
+    elif query.data == 'admin_child_status':
+        await query.edit_message_text(
+            "Отправьте команду в формате:\n"
+            "/set_child_status <user_id> <status>\n\n"
+            "Где status: 1 - ребенок, 0 - взрослый\n\n"
+            "Например: /set_child_status 123456789 1"
+        )
+        logger.info(f"Admin {user_id} selected child status option")
+    
     elif query.data == 'admin_list_users':
         # List all users in the database
         logger.info(f"Admin {user_id} requested list of all users")
@@ -132,12 +145,32 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not users:
                 await query.edit_message_text("📋 База данных пользователей пуста.")
                 return
+            
+            # Get child status information from the consent database
+            child_status = {}
+            if os.path.exists(CONSENT_DB):
+                consent_conn = sqlite3.connect(CONSENT_DB)
+                consent_cursor = consent_conn.cursor()
+                
+                # Check if the user_consent table exists
+                consent_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_consent'")
+                if consent_cursor.fetchone():
+                    # Get child status for all users
+                    consent_cursor.execute("SELECT user_id, is_child FROM user_consent")
+                    for user_id, is_child in consent_cursor.fetchall():
+                        child_status[user_id] = bool(is_child)
+                
+                consent_conn.close()
                 
             # Format list of users
             users_text = "📋 Список всех пользователей:\n\n"
             for i, (uid, first_name, last_name, username, series, tens) in enumerate(users, 1):
                 display_name = format_display_name(first_name, last_name)
-                users_text += f"{i}. {display_name} {f'@{username}' if username else ''} (ID: {uid}) - Серия: {series}, Десятки: {tens}\n"
+                
+                # Add child status if available
+                child_indicator = " 👶" if child_status.get(uid, False) else ""
+                
+                users_text += f"{i}. {display_name}{child_indicator} {f'@{username}' if username else ''} (ID: {uid}) - Серия: {series}, Десятки: {tens}\n"
                 
                 # Telegram has a message length limit, split into multiple messages if needed
                 if i % 40 == 0 and i < len(users):
@@ -226,6 +259,83 @@ async def modify_user_result(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.error(f"Error modifying user result: {e}")
         await send_response(update, f"Произошла ошибка: {str(e)}")
 
+async def set_child_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Modify a user's child status in consent database (admin only)."""
+    # Silently ignore if not in private chat
+    if not await is_private_chat(update):
+        return
+    
+    user_id = update.effective_user.id
+    
+    if not is_admin(user_id):
+        await send_response(update, "У вас нет прав администратора.")
+        return
+    
+    # Check if we have enough arguments
+    if not context.args or len(context.args) < 2:
+        await send_response(update, 
+            "Неверный формат команды. Используйте:\n"
+            "/set_child_status <user_id> <status>\n\n"
+            "Где status: 1 - ребенок, 0 - взрослый"
+        )
+        return
+    
+    try:
+        target_user_id = int(context.args[0])
+        is_child = int(context.args[1])
+        
+        # Validate status value
+        if is_child not in [0, 1]:
+            await send_response(update, "Статус должен быть 0 (взрослый) или 1 (ребенок).")
+            return
+        
+        # Check if the consent database exists
+        if not os.path.exists(CONSENT_DB):
+            await send_response(update, "❌ База данных согласий не найдена.")
+            return
+        
+        # Connect to consent database
+        conn = sqlite3.connect(CONSENT_DB)
+        cursor = conn.cursor()
+        
+        # Check if user exists in consent database
+        cursor.execute('SELECT user_id, first_name, username FROM user_consent WHERE user_id = ?', (target_user_id,))
+        user_data = cursor.fetchone()
+        
+        if not user_data:
+            conn.close()
+            await send_response(update, f"Пользователь с ID {target_user_id} не найден в базе данных согласий.")
+            return
+        
+        # Update the user's is_child status
+        cursor.execute('UPDATE user_consent SET is_child = ? WHERE user_id = ?', (is_child, target_user_id))
+        conn.commit()
+        
+        # Get updated data
+        cursor.execute('SELECT user_id, first_name, username, is_child FROM user_consent WHERE user_id = ?', (target_user_id,))
+        updated_user = cursor.fetchone()
+        conn.close()
+        
+        if updated_user:
+            username = updated_user[2] or ""
+            first_name = updated_user[1] or "Пользователь"
+            status_text = "ребенок" if updated_user[3] == 1 else "взрослый"
+            
+            await send_response(update,
+                f"Статус пользователя {first_name} {f'@{username}' if username else ''} (ID: {target_user_id}) обновлен:\n"
+                f"Текущий статус: {status_text}"
+            )
+            
+            logger.info(f"Admin {update.effective_user.id} set child status to {is_child} for user {target_user_id}")
+        else:
+            await send_response(update, f"Ошибка при обновлении статуса пользователя {target_user_id}.")
+        
+    except ValueError:
+        await send_response(update, "Ошибка в формате данных. Убедитесь, что ID пользователя и статус - числа.")
+    except Exception as e:
+        logger.error(f"Error setting child status: {e}")
+        await send_response(update, f"Произошла ошибка: {str(e)}")
+
 async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Delete a user from the scoreboard database (admin only)."""
     # Silently ignore if not in private chat
@@ -299,3 +409,4 @@ def register_admin_handlers(application):
     application.add_handler(CallbackQueryHandler(handle_admin_callback, pattern=r'^admin_'))
     application.add_handler(CommandHandler("modify_user", modify_user_result))
     application.add_handler(CommandHandler("delete_user", delete_user))
+    application.add_handler(CommandHandler("set_child_status", set_child_status))

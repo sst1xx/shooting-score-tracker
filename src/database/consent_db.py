@@ -24,6 +24,7 @@ def init_consent_db():
             username TEXT,
             first_name TEXT,
             consent_given INTEGER,
+            is_child INTEGER DEFAULT 0,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
