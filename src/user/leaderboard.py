@@ -83,9 +83,9 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     amateur_results = [r for r in results if r[4] < 80]  # Updated index for best_series
     
     # Sort each group by best_series and total_tens
-    pro_sorted = sorted(pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
-    semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
-    amateur_sorted = sorted(amateur_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
+    pro_sorted = sorted(pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:30]  # Updated indexes
+    semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:30]  # Updated indexes
+    amateur_sorted = sorted(amateur_results, key=lambda x: (x[4], x[5]), reverse=True)[:30]  # Updated indexes
     
     # Format the message
     leaderboard_text = "🏆 Таблица лидеров по всем группам 🏆\n\n"
