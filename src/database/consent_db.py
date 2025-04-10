@@ -62,6 +62,43 @@ def check_user_consent(user_id):
         logger.error(f"Error checking user consent: {e}")
         return False
 
+def is_child_user(user_id):
+    """Check if a user is marked as a child in the consent database.
+    
+    Args:
+        user_id: The user's ID
+        
+    Returns:
+        bool: True if the user is marked as a child, False otherwise
+    """
+    try:
+        conn = sqlite3.connect(CONSENT_DB)
+        cursor = conn.cursor()
+        cursor.execute('SELECT is_child FROM user_consent WHERE user_id = ?', (user_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result is not None and result[0] == 1
+    except Exception as e:
+        logger.error(f"Error checking if user is a child: {e}")
+        return False
+        
+def get_all_child_user_ids():
+    """Get a list of all user IDs marked as children in the consent database.
+    
+    Returns:
+        list: List of user IDs marked as children
+    """
+    try:
+        conn = sqlite3.connect(CONSENT_DB)
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id FROM user_consent WHERE is_child = 1 AND consent_given = 1')
+        results = cursor.fetchall()
+        conn.close()
+        return [result[0] for result in results]  # Extract user_ids from results
+    except Exception as e:
+        logger.error(f"Error retrieving child users: {e}")
+        return []
+
 def revoke_user_consent(user_id):
     """Revoke a user's consent."""
     try:
