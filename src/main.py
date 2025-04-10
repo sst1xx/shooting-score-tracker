@@ -361,6 +361,12 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Validate and compare with previous results
     if validate_input(best_series, total_tens):
+        # Import the child status check function
+        from database.consent_db import is_child_user
+        
+        # Check if the user is a child
+        user_is_child = is_child_user(user_id)
+        
         previous_result = get_user_result(user_id)
         previous_group = None
         
@@ -384,13 +390,14 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     'Пока оставим старые результаты — новые чуть скромнее. Но это всего лишь шаг в пути 💫 Не останавливайся, ты растёшь с каждым выстрелом!'
                 )
                 return
-
+                
         # Get user details from Telegram
         first_name = update.message.from_user.first_name
         last_name = update.message.from_user.last_name or ""
         username = update.message.from_user.username or ""
 
         # Save the new result with separated user fields
+        # Modified to save results for children too when they improve
         add_user_result(
             user_id,
             first_name,
@@ -410,7 +417,7 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             new_group = "Любители"
         
         # Check if user moved to a higher group
-        if previous_result and previous_group != new_group:
+        if previous_result and previous_group != new_group and not user_is_child:
             # Group upgrade hierarchy: Любители -> Продвинутые -> Профи
             if (previous_group == "Любители" and new_group in ["Продвинутые", "Профи"]) or \
                (previous_group == "Продвинутые" and new_group == "Профи"):
@@ -421,8 +428,21 @@ async def handle_result(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     f'Твой результат: {best_series}, {total_tens} — уверенное попадание в прогресс! 🎯'
                 )
                 return
+        
+        # Special message for children who improved their results
+        if user_is_child and previous_result:
+            improvement = best_series - previous_result[4]
+            tens_improvement = total_tens - previous_result[5]
+            
+            if improvement > 0 or (improvement == 0 and tens_improvement > 0):
+                await update.message.reply_text(
+                    f'🌟 Вау! {update.effective_user.first_name}, ты становишься настоящим снайпером! 🌟\n'
+                    f'Твой новый рекорд: {best_series}, {total_tens} {"десяток" if best_series < 93 else "центральных десяток"}.\n'
+                    f'Продолжай тренироваться, и скоро тебя будут знать все стрелки! 🎯✨'
+                )
+                return
 
-        # Regular success message if no group change
+        # Regular success message if no group change and not a child with improved score
         await update.message.reply_text('Есть! Вот это выстрел… Душа радуется. ❤️‍🔥🎯')
     else:
         await update.message.reply_text(
