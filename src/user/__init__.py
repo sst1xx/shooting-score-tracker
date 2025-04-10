@@ -3,9 +3,9 @@ User package for the shooting score tracker.
 Handles user consent and group membership verification.
 """
 
-# Import all functions from the consent module
+# Import consent functionality with the init_consent_db coming from database.consent_db
+from database.consent_db import init_consent_db
 from .consent import (
-    init_consent_db,
     save_user_consent,
     check_user_consent,
     revoke_user_consent,

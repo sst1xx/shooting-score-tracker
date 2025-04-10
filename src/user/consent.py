@@ -2,6 +2,8 @@ import os
 import logging
 import sqlite3
 from typing import Optional
+# Import init_consent_db from database.consent_db
+from database.consent_db import init_consent_db
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -10,22 +12,7 @@ logger = logging.getLogger(__name__)
 CONSENT_DB = os.path.join('data', 'consent.db')
 
 # ==== CONSENT DATABASE FUNCTIONS ====
-def init_consent_db():
-    """Initialize the consent database tables."""
-    conn = sqlite3.connect(CONSENT_DB)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_consent (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            consent_given INTEGER,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-    logger.info("Consent database initialized")
+# init_consent_db function removed - now imported from database.consent_db
 
 def save_user_consent(user_id, username, first_name):
     """Save user consent to the database."""

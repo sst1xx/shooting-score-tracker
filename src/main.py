@@ -18,17 +18,15 @@ from telegram import BotCommandScopeDefault, BotCommandScopeAllGroupChats
 
 # Import from the refactored database package
 from database import (
-    # Removed duplicate import: init_consent_db
     create_database,
     add_user_result,
     get_user_result,
     validate_input,
-    # Removed unused import: get_all_results
+    init_consent_db  # Now imported from database package
 )
 # Import from the new user module
 from user import (
     is_user_in_group,
-    init_consent_db,
     save_user_consent,
     check_user_consent,
     revoke_user_consent,
