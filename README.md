@@ -4,11 +4,15 @@ This project is a Telegram bot designed for participants of a shooting group to 
 
 ## Features
 
-- Users can submit their best shooting series and the number of tens.
-- Users can attach a photo with their results. //TODO
-- The bot compares new submissions with previous results and notifies users if their new results are worse.
-- A leaderboard is generated and published every two weeks on Monday mornings (depends on your cron settings)
-- Users can check their current results using the `/status` command.
+- Users can submit their best shooting series and the number of tens/central tens
+- Users must give consent to data processing before using the bot
+- The bot compares new submissions with previous results and notifies users if their new results are worse
+- Special encouraging messages are sent when users submit successful results
+- Users are categorized into different skill groups based on their scores (Beginners, Advanced, Professionals)
+- Special handling for child users with positive feedback on improvement
+- A leaderboard is generated and published every two weeks on Monday mornings
+- Users can check their current results using the `/status` command
+- Admin functionality to manage user data and results
 
 ## Project Structure
 
@@ -17,6 +21,7 @@ shooting-score-tracker
 ├── data                       # Directory for storing database files
 │   ├── consent.db             # Database storing user consent information
 │   └── scoreboard.db          # Database storing shooting scores and leaderboard data
+│   └── scoreboard_YYYY-MM-DD.db # Daily backup of the scoreboard database
 ├── docker-compose.yml         # Configuration for Docker Compose deployment
 ├── Dockerfile                 # Instructions for building the Docker image
 ├── policy.pdf                 # PDF document containing the usage policy
@@ -31,6 +36,7 @@ shooting-score-tracker
     ├── main.py                # Application entry point
     ├── publish_leaderboard.py # Script to publish the leaderboard
     └── user                   # User-related functionality
+        ├── admin.py           # Admin functionality for managing users
         ├── consent.py         # Handling user consent logic
         ├── __init__.py        # Makes the directory a Python package
         ├── leaderboard.py     # Leaderboard generation and management
@@ -57,22 +63,46 @@ shooting-score-tracker
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file based on the `.env.example` template and add your Telegram bot token.
+4. Create a `.env` file with the following variables:
+   ```
+   BOT_TOKEN=your_telegram_bot_token
+   CHAT_ID=your_target_group_chat_id
+   DATA_DIR=./data  # Optional, defaults to ./data
+   ```
 
-5. Ensure that a `policy.pdf` file exists in the project directory. This file is required for the Docker build to complete successfully.
+5. Ensure that a `policy.pdf` file exists in the project directory. This file contains the usage policy that users need to agree to before using the bot.
 
-6. Users must read and agree to the policy before they can use the bot. The bot will prompt new users to review and accept the terms outlined in the policy document.
-
-7. Run the bot:
+6. Run the bot:
    ```
    python src/main.py
    ```
 
 ## Usage
 
-- To submit results, send a message to the bot with your best series and the number of tens.
-- Use the `/status` command to check your current results.
-- The leaderboard will be published in the specified group every two weeks.
+### For Users
+- Start using the bot by sending `/start` command and agreeing to the data processing policy
+- Submit results by sending a message with your best series and the number of tens in the format: `92 3`
+- Use the `/status` command to check your current results
+- Use the `/leaderboard` command to view the leaderboard for your skill group
+- Use the `/leaderboard_all` command to view the leaderboard for all skill groups
+- Use the `/revoke` command to revoke your consent for data processing
+- Use the `/help` command to view the list of available commands
+
+### For Admins
+The bot includes admin functionality for managing users and their data:
+- Admin commands can be accessed by authorized administrators
+- Admin functions include modifying user results and deleting user data
+
+## Docker Deployment
+
+To deploy the application using Docker:
+
+1. Make sure Docker and Docker Compose are installed
+2. Build and start the containers:
+   ```
+   docker-compose up -d
+   ```
+3. The bot will run in the background and restart automatically if it crashes
 
 ## Contributing
 
