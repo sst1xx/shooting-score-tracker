@@ -5,7 +5,9 @@ import re
 from telegram import Bot
 from telegram.error import TelegramError
 from database import get_all_results, create_database, format_display_name
+from database.consent_db import get_all_child_user_ids  # Import the function to get child user IDs
 from config import BOT_TOKEN, CHAT_ID, DB_PATH
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -27,12 +29,22 @@ def parse_chat_ids(chat_id_config):
     return [id.strip() for id in ids if id.strip()]
 
 def reset_database():
-    """Delete the old database and create a new one."""
+    """Backup the old database with timestamp and create a new one."""
     try:
         # Use the centralized database path from config
         if os.path.exists(DB_PATH):
-            os.remove(DB_PATH)
-            logger.info(f"Old database deleted: {DB_PATH}")
+            # Create a timestamp in format YYYY-MM-DD
+            timestamp = datetime.now().strftime('%Y-%m-%d')
+            
+            # Generate backup filename with timestamp
+            db_name = os.path.basename(DB_PATH)
+            db_dir = os.path.dirname(DB_PATH)
+            backup_filename = f"{db_name.split('.')[0]}_{timestamp}.db"
+            backup_path = os.path.join(db_dir, backup_filename)
+            
+            # Rename the old database file instead of deleting it
+            os.rename(DB_PATH, backup_path)
+            logger.info(f"Old database backed up to: {backup_path}")
         
         # Create a new database using the function from database module
         create_database()
@@ -58,21 +70,26 @@ async def publish_leaderboard():
         bot_info = await bot.get_me()
         bot_username = f"@{bot_info.username}" if bot_info.username else ""
         
-        # Filter results into three groups
-        pro_results = [r for r in results if r[4] >= 93]  # Updated index for best_series
-        semi_pro_results = [r for r in results if 80 <= r[4] <= 92]  # Updated index for best_series
-        amateur_results = [r for r in results if r[4] <= 79]  # Updated index for best_series
+        # Get all child user IDs first
+        child_user_ids = get_all_child_user_ids()
+        
+        # Filter results into four groups (including children)
+        pro_results = [r for r in results if r[4] >= 93 and r[0] not in child_user_ids]  # Best series at index 4
+        semi_pro_results = [r for r in results if 80 <= r[4] <= 92 and r[0] not in child_user_ids]
+        amateur_results = [r for r in results if r[4] <= 79 and r[0] not in child_user_ids]
+        child_results = [r for r in results if r[0] in child_user_ids]  # Using child_user_ids instead of r[6]
         
         # Sort each group by best_series and total_tens
-        pro_sorted = sorted(pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
-        semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
-        amateur_sorted = sorted(amateur_results, key=lambda x: (x[4], x[5]), reverse=True)[:10]  # Updated indexes
+        pro_sorted = sorted(pro_results, key=lambda x: (x[4], x[5]), reverse=True)
+        semi_pro_sorted = sorted(semi_pro_results, key=lambda x: (x[4], x[5]), reverse=True)
+        amateur_sorted = sorted(amateur_results, key=lambda x: (x[4], x[5]), reverse=True)
+        child_sorted = sorted(child_results, key=lambda x: (x[4], x[5]), reverse=True)
         
         # Create message
         message = "🏅 Наши победители 🏅\n\n"
         
         # Check if any group has participants
-        if not (pro_sorted or semi_pro_sorted or amateur_sorted):
+        if not (pro_sorted or semi_pro_sorted or amateur_sorted or child_sorted):
             message += "Пока нет участников ни в одной группе.\n"
         else:
             if pro_sorted:
@@ -90,6 +107,11 @@ async def publish_leaderboard():
                 winner = format_display_name(first_name, last_name)
                 username_display = f" (@{username})" if username else ""
                 message += f"🥉 Любители: {winner}{username_display} {score}-{tens}\n"
+            if child_sorted:
+                _, first_name, last_name, username, score, tens = child_sorted[0]
+                winner = format_display_name(first_name, last_name)
+                username_display = f" (@{username})" if username else ""
+                message += f"🌟 Дети: {winner}{username_display} {score}-{tens}\n"
         
         # Now show the detailed leaderboard tables
         message += "\n📊 Подробная таблица 📊\n\n"
@@ -125,9 +147,21 @@ async def publish_leaderboard():
                 _, first_name, last_name, _, best_series, total_tens = result
                 display_name = format_display_name(first_name, last_name)
                 message += f"{i}. {display_name}: {best_series}-{total_tens}\n"
+            message += "\n"
+        
+        # Children group (new)
+        message += "🌟 Группа Дети 🌟\n"
+        if not child_sorted:
+            message += "В этой группе пока нет результатов.\n\n"
+        else:
+            for i, result in enumerate(child_sorted, 1):
+                _, first_name, last_name, _, best_series, total_tens = result
+                display_name = format_display_name(first_name, last_name)
+                message += f"{i}. {display_name}: {best_series}-{total_tens}\n"
+            message += "\n"
             
         # Add congratulatory message at the end
-        message += "\n✨ Друзья, вы — просто невероятные. Поздравляем от всего сердца! Столько тепла, старания и душевности в каждом шаге — гордимся вами до мурашек. 🧡 Новый сезон — как чистый лист, а вы уже держите в руках самые яркие краски. Пусть впереди будет только светлое и своё. 🌿\n"
+        message += "✨ Друзья, вы — просто невероятные. Поздравляем от всего сердца! Столько тепла, старания и душевности в каждом шаге — гордимся вами до мурашек. 🧡 Новый сезон — как чистый лист, а вы уже держите в руках самые яркие краски. Пусть впереди будет только светлое и своё. 🌿\n"
         message += f"\nОбнимаем мысленно и всегда рядом — ваш {bot_username} ☕️🧸"
 
 
