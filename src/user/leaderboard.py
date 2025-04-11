@@ -111,7 +111,7 @@ async def leaderboard_all(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     children_sorted = sorted(children_results, key=lambda x: (x[4], x[5]), reverse=True)[:30]  # Updated indexes
     
     # Format the message
-    leaderboard_text = "🏆 Таблица лидеров по всем группам 🏆\n\n"
+    leaderboard_text = "🏆 Лучшие из лучших! Топ-30 в каждой группе! 🏆\n\n"
     
     # Pro group
     leaderboard_text += "👑 Группа Профи 👑\n"
