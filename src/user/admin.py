@@ -164,20 +164,35 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 
             # Format list of users
             users_text = "📋 Список всех пользователей:\n\n"
+            
+            # Send the first message
+            sent_message = await query.edit_message_text(users_text)
+            
+            # Process all users in batches of 40
+            batch_count = 0
+            batch_text = ""
+            
             for i, (uid, first_name, last_name, username, series, tens) in enumerate(users, 1):
                 display_name = format_display_name(first_name, last_name)
                 
                 # Add child status if available
                 child_indicator = " 👶" if child_status.get(uid, False) else ""
                 
-                users_text += f"{i}. {display_name}{child_indicator} {f'@{username}' if username else ''} (ID: {uid}) - Серия: {series}, Десятки: {tens}\n"
+                # Add this user to current batch
+                batch_text += f"{i}. {display_name}{child_indicator} {f'@{username}' if username else ''} (ID: {uid}) - Серия: {series}, Десятки: {tens}\n"
                 
-                # Telegram has a message length limit, split into multiple messages if needed
-                if i % 40 == 0 and i < len(users):
-                    await query.edit_message_text(users_text)
-                    users_text = "📋 Список пользователей (продолжение):\n\n"
-            
-            await query.edit_message_text(users_text)
+                # When reached 40 users or at the end, send the batch
+                if i % 40 == 0 or i == len(users):
+                    # For first batch, update the initial message
+                    if batch_count == 0:
+                        await sent_message.edit_text(users_text + batch_text)
+                    else:
+                        # For subsequent batches, send new messages
+                        await query.message.reply_text(f"📋 Список пользователей (продолжение):\n\n{batch_text}")
+                    
+                    # Reset batch text and increment counter
+                    batch_text = ""
+                    batch_count += 1
             
         except Exception as e:
             logger.error(f"Error listing users: {e}")
